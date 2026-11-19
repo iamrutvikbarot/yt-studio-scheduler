@@ -317,6 +317,38 @@
       transform: rotate(180deg);
     }
 
+    .btn-copy-all {
+      background: #13151D;
+      color: #FFFFFF;
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 9px 16px;
+      font-size: 13.5px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      transition: background 150ms var(--ease-out), border-color 150ms var(--ease-out), transform 120ms var(--ease-out);
+    }
+
+    .btn-copy-all:hover {
+      background: #1E2230;
+      border-color: var(--card-border-hover);
+      transform: translateY(-1px);
+    }
+
+    .btn-copy-all:active {
+      transform: scale(0.97);
+    }
+
+    .btn-copy-all.copied {
+      background: #30D158;
+      color: #000000;
+      border-color: #30D158;
+    }
+
     kbd {
       font-family: 'JetBrains Mono', monospace;
       font-size: 11px;
@@ -775,7 +807,7 @@
       input[type="date"] {
         width: 100%;
       }
-      .btn-spin-all {
+      .btn-spin-all, .btn-copy-all {
         width: 100%;
         justify-content: center;
       }
@@ -839,6 +871,10 @@
       <button class="btn-spin-all" onclick="spinAllSequential()" aria-label="Spin All Slots">
         <span class="spin-icon">🎲</span> Spin All <kbd>R</kbd>
       </button>
+
+      <button class="btn-copy-all" id="btnCopyAll" onclick="copyAllWithFeedback()" aria-label="Copy Full Schedule">
+        📋 Copy All <kbd>C</kbd>
+      </button>
     </div>
   </header>
 
@@ -854,15 +890,6 @@
             <span class="row-strategy-pill" id="hinNote">Weekday: 4–5:15 PM Video → 5:30–7 PM Short</span>
           </div>
           <h2 class="row-heading" id="hinRowHeading">Hindi &amp; Gujarati</h2>
-        </div>
-
-        <div class="row-actions-group">
-          <button class="btn-row-spin" title="Spin Hindi & Gujarati" onclick="spinRow('hin')" aria-label="Spin Hindi Row">
-            🔄
-          </button>
-          <button class="btn-copy-schedule" id="hinCopyBtn" onclick="copyRowSchedule('Hindi & Gujarati', 'hinVideoDateText', currentTimes.hinVideo, 'hinShortDateText', currentTimes.hinShort, 'hinCopyBtn')">
-            📋 Copy Schedule
-          </button>
         </div>
       </div>
 
@@ -918,15 +945,6 @@
             <span class="row-strategy-pill">US Afternoon target · Date rolls +1 Day in Studio</span>
           </div>
           <h2 class="row-heading" id="engRowHeading">English</h2>
-        </div>
-
-        <div class="row-actions-group">
-          <button class="btn-row-spin" title="Spin English" onclick="spinRow('eng')" aria-label="Spin English Row">
-            🔄
-          </button>
-          <button class="btn-copy-schedule" id="engCopyBtn" onclick="copyRowSchedule('English', 'engVideoDateText', currentTimes.engVideo, 'engShortDateText', currentTimes.engShort, 'engCopyBtn')">
-            📋 Copy Schedule
-          </button>
         </div>
       </div>
 
@@ -1382,6 +1400,20 @@
       }, 1800);
     }
     triggerSonnerToast(msg);
+  }
+
+  function copyAllWithFeedback() {
+    const btn = document.getElementById('btnCopyAll');
+    if (btn) {
+      const orig = btn.innerHTML;
+      btn.innerHTML = `✓ Copied!`;
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.innerHTML = orig;
+        btn.classList.remove('copied');
+      }, 1800);
+    }
+    copyAllSchedules();
   }
 
   function copyAllSchedules() {
