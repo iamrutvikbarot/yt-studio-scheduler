@@ -660,6 +660,34 @@
       letter-spacing: 0.02em;
     }
 
+    /* Best Days Badge inside Card */
+    .best-days-badge {
+      font-size: 11.5px;
+      color: #94A3B8;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 5px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      letter-spacing: -0.01em;
+    }
+
+    .best-days-badge strong {
+      color: #FFFFFF;
+      font-weight: 700;
+    }
+
+    .best-days-badge .peak-fire {
+      color: #FF9F0A;
+      font-weight: 700;
+      font-size: 11px;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+    }
+
     /* -------------------------------------------------------------------------
        Authentic 3-Row iPhone Picker Drum Wheel
        (Upper Time, Center Selected Time in Lens, Lower Time)
@@ -935,7 +963,11 @@
     <div class="controls-group">
       <button type="button" class="quick-pill-btn" id="pillToday" onclick="setTargetQuickDate(0)">Today</button>
       <button type="button" class="quick-pill-btn" id="pillTomorrow" onclick="setTargetQuickDate(1)">Tomorrow</button>
-      <button type="button" class="quick-pill-btn" id="pillWeekend" onclick="setTargetNextWeekend()">Weekend</button>
+      <button type="button" class="quick-pill-btn" id="pillWed" onclick="setTargetDayOfWeek(3)" title="Wednesday (Midweek Peak)">Wed</button>
+      <button type="button" class="quick-pill-btn" id="pillThu" onclick="setTargetDayOfWeek(4)" title="Thursday (Shorts Leader)">Thu</button>
+      <button type="button" class="quick-pill-btn" id="pillFri" onclick="setTargetDayOfWeek(5)" title="Friday (#1 Overall Peak)">Fri 🔥</button>
+      <button type="button" class="quick-pill-btn" id="pillSat" onclick="setTargetDayOfWeek(6)" title="Saturday (Morning Retention)">Sat</button>
+      <button type="button" class="quick-pill-btn" id="pillSun" onclick="setTargetDayOfWeek(0)" title="Sunday (Global #1 Slot)">Sun ⭐</button>
 
       <input type="date" id="datePicker" onchange="onDateChanged()" aria-label="Upload Target Date">
       
@@ -976,6 +1008,10 @@
             <span class="step-badge badge-video">1️⃣ Video (Upload First)</span>
             <time class="slot-date" id="hinVideoDateText">--</time>
           </div>
+          <div class="best-days-badge">
+            <span>Best Days: <strong>Wed · Thu · Fri</strong> &amp; <strong>Sat · Sun</strong></span>
+            <span class="peak-fire" id="hinVideoDayStatus"></span>
+          </div>
           <div class="drum-viewport" id="viewportHinVideo" aria-label="Hindi Video Time Reel">
             <div class="drum-lens"></div>
             <div class="drum-strip" id="hinVideoStrip"></div>
@@ -993,6 +1029,10 @@
           <div class="slot-header">
             <span class="step-badge badge-short">2️⃣ Short (Upload After)</span>
             <time class="slot-date" id="hinShortDateText">--</time>
+          </div>
+          <div class="best-days-badge">
+            <span>Best Days: <strong>Thu · Fri · Sat</strong> <span style="color:#FF453A;">(Fri #1)</span></span>
+            <span class="peak-fire" id="hinShortDayStatus"></span>
           </div>
           <div class="drum-viewport" id="viewportHinShort" aria-label="Hindi Short Time Reel">
             <div class="drum-lens"></div>
@@ -1026,6 +1066,10 @@
               <span class="badge-rollover">+1 Day</span>
             </time>
           </div>
+          <div class="best-days-badge">
+            <span>Best Days: <strong>Wed · Thu · Fri</strong> &amp; <strong>Sun</strong></span>
+            <span class="peak-fire" id="engVideoDayStatus"></span>
+          </div>
           <div class="drum-viewport" id="viewportEngVideo" aria-label="English Video Time Reel">
             <div class="drum-lens"></div>
             <div class="drum-strip" id="engVideoStrip"></div>
@@ -1046,6 +1090,10 @@
               <span id="engShortDateText">--</span>
               <span class="badge-rollover">+1 Day</span>
             </time>
+          </div>
+          <div class="best-days-badge">
+            <span>Best Days: <strong>Thu · Fri · Sat</strong></span>
+            <span class="peak-fire" id="engShortDayStatus"></span>
           </div>
           <div class="drum-viewport" id="viewportEngShort" aria-label="English Short Time Reel">
             <div class="drum-lens"></div>
@@ -1188,13 +1236,31 @@
     onDateChanged();
   }
 
+  function setTargetDayOfWeek(targetDay) {
+    const d = new Date();
+    const currentDay = d.getDay();
+    let diff = (targetDay - currentDay + 7) % 7;
+    if (diff === 0) diff = 7; // jump to upcoming week if today is already that day
+    d.setDate(d.getDate() + diff);
+    document.getElementById('datePicker').value = d.toISOString().split('T')[0];
+    onDateChanged();
+  }
+
   function updateQuickPills() {
     const pickerVal = document.getElementById('datePicker').value;
-    const today = new Date().toISOString().split('T')[0];
-    const tom = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+    const baseDate = getTargetDate();
+    const dayOfWeek = baseDate.getDay(); // 0=Sun, 3=Wed, 4=Thu, 5=Fri, 6=Sat
 
-    document.getElementById('pillToday').classList.toggle('active', pickerVal === today);
-    document.getElementById('pillTomorrow').classList.toggle('active', pickerVal === tom);
+    const todayStr = new Date().toISOString().split('T')[0];
+    const tomStr = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+
+    document.getElementById('pillToday').classList.toggle('active', pickerVal === todayStr);
+    document.getElementById('pillTomorrow').classList.toggle('active', pickerVal === tomStr);
+    document.getElementById('pillWed').classList.toggle('active', dayOfWeek === 3);
+    document.getElementById('pillThu').classList.toggle('active', dayOfWeek === 4);
+    document.getElementById('pillFri').classList.toggle('active', dayOfWeek === 5);
+    document.getElementById('pillSat').classList.toggle('active', dayOfWeek === 6);
+    document.getElementById('pillSun').classList.toggle('active', dayOfWeek === 0);
   }
 
   function onDateChanged() {
@@ -1223,6 +1289,38 @@
     // English dates (Rolled over +1 day for US midnight slots)
     document.getElementById('engVideoDateText').textContent = nextStr;
     document.getElementById('engShortDateText').textContent = nextStr;
+
+    // Dynamic Best Days Match Status
+    const dayOfWeek = baseDate.getDay();
+    const hinVStatus = document.getElementById('hinVideoDayStatus');
+    const hinSStatus = document.getElementById('hinShortDayStatus');
+    const engVStatus = document.getElementById('engVideoDayStatus');
+    const engSStatus = document.getElementById('engShortDayStatus');
+
+    if (hinVStatus) {
+      if (dayOfWeek >= 3 && dayOfWeek <= 5) hinVStatus.innerHTML = '🔥 Wed–Fri Peak';
+      else if (dayOfWeek === 0 || dayOfWeek === 6) hinVStatus.innerHTML = '⭐ Weekend Prime';
+      else hinVStatus.innerHTML = 'ℹ️ Standard Day';
+    }
+
+    if (hinSStatus) {
+      if (dayOfWeek === 5) hinSStatus.innerHTML = '🔥 Friday #1 Peak';
+      else if (dayOfWeek === 4 || dayOfWeek === 6) hinSStatus.innerHTML = '⭐ Top Shorts Day';
+      else if (dayOfWeek === 0) hinSStatus.innerHTML = '⚠️ Sunday Night Slow';
+      else hinSStatus.innerHTML = 'ℹ️ Standard Day';
+    }
+
+    if (engVStatus) {
+      if (dayOfWeek === 0) engVStatus.innerHTML = '🔥 Sunday #1 Global';
+      else if (dayOfWeek >= 3 && dayOfWeek <= 5) engVStatus.innerHTML = '⭐ Strong Wed–Fri';
+      else engVStatus.innerHTML = 'ℹ️ Standard Day';
+    }
+
+    if (engSStatus) {
+      if (dayOfWeek === 5) engSStatus.innerHTML = '🔥 Friday Peak';
+      else if (dayOfWeek === 4 || dayOfWeek === 6) engSStatus.innerHTML = '⭐ Strong Thu/Sat';
+      else engSStatus.innerHTML = 'ℹ️ Standard Day';
+    }
   }
 
   /**
