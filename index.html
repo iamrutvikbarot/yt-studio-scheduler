@@ -8,57 +8,59 @@
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
   
   <style>
     /* -------------------------------------------------------------------------
-       Vercel Design System & Emil Kowalski Motion Tokens
+       Vercel & Emil Kowalski Design Tokens
        ------------------------------------------------------------------------- */
     :root {
       --bg: #000000;
-      --card-bg: #0A0A0A;
-      --card-border: rgba(255, 255, 255, 0.09);
-      --card-border-hover: rgba(255, 255, 255, 0.18);
+      --card-bg: #0A0A0C;
+      --card-border: rgba(255, 255, 255, 0.08);
+      --card-border-hover: rgba(255, 255, 255, 0.16);
       
-      --row-bg: #0D0D0E;
+      --row-bg: #0E0F14;
       --row-border: rgba(255, 255, 255, 0.07);
       --row-border-hover: rgba(255, 255, 255, 0.15);
       
-      --slot-bg: #141416;
+      --slot-bg: #14161E;
       --slot-border: rgba(255, 255, 255, 0.08);
+      --slot-border-hover: rgba(255, 255, 255, 0.18);
       
-      --text-primary: #EDEDED;
-      --text-secondary: #A1A1AA;
-      --text-tertiary: #71717A;
-      --text-muted: #52525B;
+      --drum-bg: #090A0E;
+      --drum-border: rgba(255, 255, 255, 0.06);
+      
+      --text-primary: #FFFFFF;
+      --text-secondary: #94A3B8;
+      --text-tertiary: #64748B;
       
       --blue: #0070F3;
-      --blue-glow: rgba(0, 112, 243, 0.28);
+      --blue-glow: rgba(0, 112, 243, 0.3);
       
       --red: #FF453A;
       --red-bg: rgba(255, 69, 58, 0.12);
-      --red-border: rgba(255, 69, 58, 0.25);
+      --red-border: rgba(255, 69, 58, 0.28);
       
       --green: #30D158;
       --green-bg: rgba(48, 209, 88, 0.12);
-      --green-border: rgba(48, 209, 88, 0.25);
+      --green-border: rgba(48, 209, 88, 0.26);
       
-      --amber: #F5A623;
-      --amber-bg: rgba(245, 166, 35, 0.12);
-      --amber-border: rgba(245, 166, 35, 0.25);
+      --amber: #FF9F0A;
+      --amber-bg: rgba(255, 159, 10, 0.14);
+      --amber-border: rgba(255, 159, 10, 0.3);
       
       --purple: #BF5AF2;
       --purple-bg: rgba(191, 90, 242, 0.12);
-      --purple-border: rgba(191, 90, 242, 0.25);
+      --purple-border: rgba(191, 90, 242, 0.26);
       
       /* Emil Kowalski Animation Easing Curves */
       --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
       --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
       --ease-spring: cubic-bezier(0.12, 0.9, 0.22, 1.05);
-      --ease-snappy: cubic-bezier(0.2, 0.8, 0.2, 1);
       
-      --item-height: 48px;
-      --wheel-height: 112px;
+      --item-height: 40px;
+      --wheel-height: 120px;
     }
 
     * {
@@ -72,7 +74,7 @@
     body {
       background: var(--bg);
       color: var(--text-primary);
-      font-family: 'Geist', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
@@ -85,22 +87,24 @@
       touch-action: manipulation;
     }
 
-    /* Ambient Vercel Background Grid Light */
+    /* Ambient Vercel Background Radial Glow */
     body::before {
       content: '';
       position: absolute;
-      top: -200px;
+      top: -180px;
       left: 50%;
       transform: translateX(-50%);
       width: 1000px;
       height: 450px;
-      background: radial-gradient(50% 50% at 50% 50%, rgba(0, 112, 243, 0.08) 0%, transparent 100%);
+      background: radial-gradient(50% 50% at 50% 50%, rgba(0, 112, 243, 0.1) 0%, transparent 100%);
       pointer-events: none;
       z-index: 0;
     }
 
     .container {
       width: 100%;
+      max-width: 1360px;
+      margin: 0 auto;
       position: relative;
       z-index: 1;
       display: flex;
@@ -109,28 +113,28 @@
     }
 
     /* -------------------------------------------------------------------------
-       Top Navigation & Control Bar (Vercel Style)
+       Header & Top Navigation
        ------------------------------------------------------------------------- */
     header {
       width: 100%;
       background: var(--card-bg);
       border: 1px solid var(--card-border);
-      border-radius: 16px;
+      border-radius: 18px;
       padding: 18px 24px;
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
       gap: 16px;
-      box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.5);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
     }
 
     .brand-section {
       display: flex;
       flex-direction: column;
-      gap: 2px;
+      gap: 4px;
     }
 
     .brand-row {
@@ -144,12 +148,12 @@
       height: 8px;
       border-radius: 50%;
       background: var(--green);
-      box-shadow: 0 0 10px var(--green);
+      box-shadow: 0 0 12px var(--green);
     }
 
     h1 {
-      font-size: 20px;
-      font-weight: 700;
+      font-size: 21px;
+      font-weight: 800;
       letter-spacing: -0.025em;
       color: #FFF;
       text-wrap: balance;
@@ -168,19 +172,35 @@
       flex-wrap: wrap;
     }
 
-    .date-label {
-      position: relative;
-      display: inline-flex;
-      align-items: center;
+    .quick-pill-btn {
+      background: #14161E;
+      border: 1px solid var(--card-border);
+      color: var(--text-secondary);
+      padding: 8px 12px;
+      border-radius: 10px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 150ms var(--ease-out);
+    }
+
+    .quick-pill-btn:hover {
+      background: #1F222E;
+      color: #FFF;
+      border-color: var(--card-border-hover);
+    }
+
+    .quick-pill-btn:active {
+      transform: scale(0.97);
     }
 
     input[type="date"] {
-      background: #141416;
+      background: #14161E;
       border: 1px solid var(--card-border);
       color: #FFF;
       padding: 9px 13px;
       border-radius: 10px;
-      font-family: 'Geist Mono', monospace;
+      font-family: 'JetBrains Mono', monospace;
       font-size: 13px;
       font-weight: 600;
       color-scheme: dark;
@@ -194,9 +214,8 @@
       box-shadow: 0 0 0 2px var(--blue-glow);
     }
 
-    /* Icon Buttons */
     .btn-icon {
-      background: #141416;
+      background: #14161E;
       border: 1px solid var(--card-border);
       border-radius: 10px;
       width: 40px;
@@ -207,11 +226,11 @@
       cursor: pointer;
       color: var(--text-secondary);
       font-size: 15px;
-      transition: background 150ms var(--ease-out), color 150ms var(--ease-out), border-color 150ms var(--ease-out), transform 120ms var(--ease-out);
+      transition: background 150ms var(--ease-out), color 150ms var(--ease-out), transform 120ms var(--ease-out);
     }
 
     .btn-icon:hover {
-      background: #1E1E22;
+      background: #1F222E;
       color: #FFF;
       border-color: var(--card-border-hover);
     }
@@ -220,16 +239,10 @@
       transform: scale(0.97);
     }
 
-    .btn-icon:focus-visible {
-      outline: 2px solid var(--blue);
-      outline-offset: 2px;
-    }
-
     .btn-icon.muted {
       opacity: 0.35;
     }
 
-    /* Primary Spin Button */
     .btn-spin-all {
       background: #FFFFFF;
       color: #000000;
@@ -243,38 +256,33 @@
       display: inline-flex;
       align-items: center;
       gap: 7px;
-      box-shadow: 0 2px 10px rgba(255, 255, 255, 0.15);
+      box-shadow: 0 4px 14px rgba(255, 255, 255, 0.16);
       transition: background 150ms var(--ease-out), transform 120ms var(--ease-out), box-shadow 150ms var(--ease-out);
     }
 
     .btn-spin-all:hover {
       background: #EDEDED;
       transform: translateY(-1px);
-      box-shadow: 0 4px 14px rgba(255, 255, 255, 0.22);
+      box-shadow: 0 6px 20px rgba(255, 255, 255, 0.24);
     }
 
     .btn-spin-all:active {
       transform: scale(0.97);
     }
 
-    .btn-spin-all:focus-visible {
-      outline: 2px solid var(--blue);
-      outline-offset: 2px;
-    }
-
     kbd {
-      font-family: 'Geist Mono', monospace;
+      font-family: 'JetBrains Mono', monospace;
       font-size: 11px;
-      font-weight: 600;
-      background: rgba(0, 0, 0, 0.1);
-      border: 1px solid rgba(0, 0, 0, 0.15);
+      font-weight: 700;
+      background: rgba(0, 0, 0, 0.12);
+      border: 1px solid rgba(0, 0, 0, 0.18);
       padding: 1px 5px;
       border-radius: 4px;
       margin-left: 2px;
     }
 
     /* -------------------------------------------------------------------------
-       Full-Width 2 Rows
+       2 Full-Width Rows
        ------------------------------------------------------------------------- */
     .schedule-stack {
       width: 100%;
@@ -287,19 +295,20 @@
       width: 100%;
       background: var(--row-bg);
       border: 1px solid var(--row-border);
-      border-radius: 18px;
-      padding: 22px 28px;
+      border-radius: 22px;
+      padding: 24px 28px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 24px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
       transition: border-color 200ms var(--ease-out), box-shadow 200ms var(--ease-out);
     }
 
     @media (hover: hover) and (pointer: fine) {
       .schedule-row:hover {
         border-color: var(--row-border-hover);
-        box-shadow: 0 10px 32px rgba(0, 0, 0, 0.45);
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
       }
     }
 
@@ -307,12 +316,12 @@
       min-width: 220px;
       display: flex;
       flex-direction: column;
-      gap: 5px;
+      gap: 6px;
     }
 
     .row-tag {
       font-size: 11px;
-      font-weight: 700;
+      font-weight: 800;
       text-transform: uppercase;
       letter-spacing: 0.08em;
       padding: 3px 9px;
@@ -320,55 +329,62 @@
       display: inline-flex;
       align-items: center;
       width: fit-content;
-      margin-bottom: 2px;
     }
     .tag-hin { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
-    .tag-eng { background: rgba(0, 112, 243, 0.12); color: #3291FF; border: 1px solid rgba(0, 112, 243, 0.25); }
+    .tag-eng { background: rgba(0, 112, 243, 0.12); color: #3291FF; border: 1px solid rgba(0, 112, 243, 0.28); }
 
     .row-heading {
-      font-size: 20px;
-      font-weight: 700;
-      letter-spacing: -0.02em;
+      font-size: 21px;
+      font-weight: 800;
+      letter-spacing: -0.025em;
       color: #FFF;
     }
 
     .row-sub {
-      font-size: 12px;
-      color: var(--text-tertiary);
+      font-size: 12.5px;
+      color: var(--text-secondary);
       letter-spacing: -0.01em;
+      line-height: 1.4;
     }
 
-    /* Slots Container */
+    /* Slots Sequence Group */
     .slots-sequence-wrap {
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 18px;
       flex: 1;
       justify-content: space-evenly;
     }
 
     .step-arrow {
-      color: var(--text-muted);
-      font-size: 18px;
+      color: var(--text-tertiary);
+      font-size: 22px;
       font-weight: 600;
       user-select: none;
-      transition: transform 200ms var(--ease-out), color 200ms var(--ease-out);
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
+    /* Individual Slot Card */
     .slot-card {
       background: var(--slot-bg);
       border: 1px solid var(--slot-border);
-      border-radius: 14px;
-      padding: 14px 18px 12px;
+      border-radius: 16px;
+      padding: 16px 18px 14px;
       flex: 1;
-      max-width: 390px;
-      min-width: 240px;
+      max-width: 420px;
+      min-width: 260px;
       display: flex;
       flex-direction: column;
-      gap: 8px;
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 4px 12px rgba(0, 0, 0, 0.3);
+      gap: 10px;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 6px 18px rgba(0, 0, 0, 0.35);
       position: relative;
       transition: border-color 150ms var(--ease-out);
+    }
+
+    .slot-card:hover {
+      border-color: var(--slot-border-hover);
     }
 
     .slot-header {
@@ -382,9 +398,9 @@
       align-items: center;
       gap: 5px;
       font-size: 11px;
-      font-weight: 700;
+      font-weight: 800;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.04em;
       padding: 3px 8px;
       border-radius: 6px;
     }
@@ -392,9 +408,9 @@
     .badge-short { background: var(--purple-bg); color: var(--purple); border: 1px solid var(--purple-border); }
 
     .slot-date {
-      font-family: 'Geist Mono', monospace;
+      font-family: 'JetBrains Mono', monospace;
       font-size: 12px;
-      font-weight: 600;
+      font-weight: 700;
       color: var(--text-secondary);
       font-variant-numeric: tabular-nums;
       display: flex;
@@ -407,41 +423,42 @@
       color: var(--amber);
       border: 1px solid var(--amber-border);
       font-size: 10px;
-      font-weight: 700;
-      padding: 1px 5px;
+      font-weight: 800;
+      padding: 1px 6px;
       border-radius: 4px;
       letter-spacing: 0.02em;
     }
 
     /* -------------------------------------------------------------------------
-       iPhone Drum Reel Time Wheel (Emil Kowalski Physics)
+       Authentic 3-Row iPhone Picker Drum Wheel
+       (Upper Time, Center Selected Time in Lens, Lower Time)
        ------------------------------------------------------------------------- */
     .drum-viewport {
-      height: var(--wheel-height);
+      height: var(--wheel-height); /* 120px = 3 items */
       position: relative;
       overflow: hidden;
-      border-radius: 10px;
-      background: #0B0B0C;
-      border: 1px solid rgba(255, 255, 255, 0.05);
-      /* Eased Cylindrical Gradient Mask */
-      -webkit-mask-image: linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.4) 15%, black 35%, black 65%, rgba(0,0,0,0.4) 85%, transparent 100%);
-      mask-image: linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.4) 15%, black 35%, black 65%, rgba(0,0,0,0.4) 85%, transparent 100%);
+      border-radius: 12px;
+      background: var(--drum-bg);
+      border: 1px solid var(--drum-border);
+      perspective: 500px;
+      /* Smooth 3D Cylindrical Eased Fade Mask */
+      -webkit-mask-image: linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.5) 18%, black 36%, black 64%, rgba(0,0,0,0.5) 82%, transparent 100%);
+      mask-image: linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.5) 18%, black 36%, black 64%, rgba(0,0,0,0.5) 82%, transparent 100%);
     }
 
-    /* Floating Center Glass Lens */
+    /* Center Frosted Glass Selection Lens */
     .drum-lens {
       position: absolute;
-      top: 50%;
+      top: 40px; /* Perfectly centered for item-height 40px in 120px viewport */
       left: 6px;
       right: 6px;
-      height: var(--item-height);
-      transform: translateY(-50%);
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.14);
+      height: 40px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.16);
       border-radius: 8px;
       pointer-events: none;
-      box-shadow: inset 0 0 12px rgba(255, 255, 255, 0.02), 0 4px 16px rgba(0, 0, 0, 0.5);
       z-index: 2;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 4px 16px rgba(0, 0, 0, 0.5);
     }
 
     .drum-strip {
@@ -456,21 +473,22 @@
     }
 
     .drum-cell {
-      height: var(--item-height);
+      height: var(--item-height); /* 40px */
       display: flex;
       align-items: center;
       justify-content: center;
-      font-family: 'Geist Mono', monospace;
+      font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
       font-size: 21px;
       font-weight: 700;
       color: #FFFFFF;
-      letter-spacing: -0.025em;
+      letter-spacing: -0.02em;
       font-variant-numeric: tabular-nums;
       user-select: none;
-      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9);
+      transition: opacity 180ms ease, transform 180ms ease;
     }
 
-    /* Row Action Buttons */
+    /* Row Actions */
     .row-actions-group {
       display: flex;
       align-items: center;
@@ -480,7 +498,7 @@
     }
 
     .btn-row-spin {
-      background: #141416;
+      background: #14161E;
       border: 1px solid var(--card-border);
       border-radius: 10px;
       width: 42px;
@@ -495,7 +513,7 @@
     }
 
     .btn-row-spin:hover {
-      background: #1E1E22;
+      background: #1F222E;
       color: #FFF;
       transform: rotate(35deg);
     }
@@ -529,13 +547,8 @@
       transform: scale(0.97);
     }
 
-    .btn-copy-schedule:focus-visible {
-      outline: 2px solid var(--blue);
-      outline-offset: 2px;
-    }
-
     /* -------------------------------------------------------------------------
-       Sonner-Style Physics Toast (Emil Kowalski)
+       Sonner Physics Toast Alert
        ------------------------------------------------------------------------- */
     .sonner-toast {
       position: fixed;
@@ -565,7 +578,7 @@
       transform: translateX(-50%) translateY(0) scale(1);
     }
 
-    /* Keyboard Shortcuts Footer Note */
+    /* Shortcuts Footer */
     .shortcuts-footer {
       display: flex;
       align-items: center;
@@ -583,26 +596,13 @@
     }
 
     .kbd-tag {
-      background: #141416;
+      background: #14161E;
       border: 1px solid var(--card-border);
       color: var(--text-secondary);
-      font-family: 'Geist Mono', monospace;
+      font-family: 'JetBrains Mono', monospace;
       padding: 1px 6px;
       border-radius: 4px;
       font-size: 11px;
-    }
-
-    /* -------------------------------------------------------------------------
-       Reduced Motion & Responsive Support
-       ------------------------------------------------------------------------- */
-    @media (prefers-reduced-motion: reduce) {
-      .drum-strip {
-        transition: opacity 150ms ease !important;
-      }
-      .btn-spin-all, .btn-icon, .btn-row-spin, .btn-copy-schedule {
-        transition: none !important;
-        transform: none !important;
-      }
     }
 
     @media (max-width: 960px) {
@@ -634,20 +634,22 @@
 
 <div class="container">
 
-  <!-- Top Navigation & Control Bar -->
+  <!-- Header -->
   <header>
     <div class="brand-section">
       <div class="brand-row">
         <span class="status-dot" aria-hidden="true"></span>
         <h1>YouTube Studio Scheduler</h1>
       </div>
-      <p class="deck">15-minute intervals · Video First → Shorts Second · Automatic US Date Rollover</p>
+      <p class="deck">Authentic 3-Row Wheel Picker · Video First → Shorts Second · 15-Minute Grid</p>
     </div>
 
     <div class="controls-group">
-      <label class="date-label" for="datePicker">
-        <input type="date" id="datePicker" onchange="onDateChanged()" aria-label="Upload Target Date">
-      </label>
+      <button type="button" class="quick-pill-btn" onclick="setTargetQuickDate(0)">Today</button>
+      <button type="button" class="quick-pill-btn" onclick="setTargetQuickDate(1)">Tomorrow</button>
+      <button type="button" class="quick-pill-btn" onclick="setTargetNextWeekend()">Weekend</button>
+
+      <input type="date" id="datePicker" onchange="onDateChanged()" aria-label="Upload Target Date">
       
       <button class="btn-icon" id="audioToggleBtn" title="Toggle Wheel Haptic Audio" onclick="toggleAudio()" aria-label="Toggle Audio">
         🔊
@@ -772,7 +774,7 @@
     <span>•</span>
     <span>Press <span class="kbd-tag">C</span> to copy all schedules</span>
     <span>•</span>
-    <span>Strict 15-min YouTube Studio intervals</span>
+    <span>Upper, Center &amp; Lower 15-min intervals</span>
   </footer>
 
 </div>
@@ -784,28 +786,49 @@
 
 <script>
   /**
-   * 15-Minute Slot Pools adhering strictly to "best Time.html"
-   * Guaranteed: Video is always earlier, and Short is always after.
+   * Continuous 15-minute slot sequences with buffer slots
+   * This guarantees that when a center time is chosen, its upper (-15m)
+   * and lower (+15m) neighbors ALWAYS exist and display symmetrically!
    */
-  const POOLS = {
-    // Weekday Hindi Video: 4:00 PM – 5:15 PM IST
-    hinVideoWeekday: ['04:00 PM', '04:15 PM', '04:30 PM', '04:45 PM', '05:00 PM', '05:15 PM'],
-    // Weekday Hindi Short: 5:30 PM – 7:00 PM IST (strictly after Video)
-    hinShortWeekday: ['05:30 PM', '05:45 PM', '06:00 PM', '06:15 PM', '06:30 PM', '06:45 PM', '07:00 PM'],
+  const CONTINUOUS_POOLS = {
+    // Weekday Hindi Video: Targets are 4:00 PM to 5:15 PM
+    hinVideoWeekday: {
+      sequence: ['03:45 PM', '04:00 PM', '04:15 PM', '04:30 PM', '04:45 PM', '05:00 PM', '05:15 PM', '05:30 PM'],
+      targetIndices: [1, 2, 3, 4, 5, 6] // 04:00 PM to 05:15 PM
+    },
+    // Weekday Hindi Short: Targets are 5:30 PM to 7:00 PM (strictly after Video)
+    hinShortWeekday: {
+      sequence: ['05:15 PM', '05:30 PM', '05:45 PM', '06:00 PM', '06:15 PM', '06:30 PM', '06:45 PM', '07:00 PM', '07:15 PM'],
+      targetIndices: [1, 2, 3, 4, 5, 6, 7] // 05:30 PM to 07:00 PM
+    },
 
-    // Weekend Hindi Video: 9:00 AM – 10:15 AM IST
-    hinVideoWeekend: ['09:00 AM', '09:15 AM', '09:30 AM', '09:45 AM', '10:00 AM', '10:15 AM'],
-    // Weekend Hindi Short: 12:30 PM – 2:30 PM IST (lunch peak, strictly after morning Video)
-    hinShortWeekend: ['12:30 PM', '12:45 PM', '01:00 PM', '01:15 PM', '01:30 PM', '01:45 PM', '02:00 PM', '02:15 PM', '02:30 PM'],
+    // Weekend Hindi Video: Targets are 9:00 AM to 10:15 AM
+    hinVideoWeekend: {
+      sequence: ['08:45 AM', '09:00 AM', '09:15 AM', '09:30 AM', '09:45 AM', '10:00 AM', '10:15 AM', '10:30 AM'],
+      targetIndices: [1, 2, 3, 4, 5, 6] // 09:00 AM to 10:15 AM
+    },
+    // Weekend Hindi Short: Targets are 12:30 PM to 2:30 PM (lunch peak)
+    hinShortWeekend: {
+      sequence: ['12:15 PM', '12:30 PM', '12:45 PM', '01:00 PM', '01:15 PM', '01:30 PM', '01:45 PM', '02:00 PM', '02:15 PM', '02:30 PM', '02:45 PM'],
+      targetIndices: [1, 2, 3, 4, 5, 6, 7, 8, 9] // 12:30 PM to 02:30 PM
+    },
 
-    // English Video (US afternoon 2:00-3:00 PM EST = 12:30 AM - 1:30 AM IST NEXT DAY)
-    engVideoUS: ['12:30 AM', '12:45 AM', '01:00 AM', '01:15 AM', '01:30 AM'],
-    // English Short (Strictly after Video: 1:45 AM - 2:45 AM IST NEXT DAY)
-    engShortUS: ['01:45 AM', '02:00 AM', '02:15 AM', '02:30 AM', '02:45 AM']
+    // English Video (US afternoon: 12:30 AM - 1:30 AM IST NEXT DAY)
+    engVideoUS: {
+      sequence: ['12:15 AM', '12:30 AM', '12:45 AM', '01:00 AM', '01:15 AM', '01:30 AM', '01:45 AM'],
+      targetIndices: [1, 2, 3, 4, 5] // 12:30 AM to 01:30 AM
+    },
+    // English Short (US afternoon: 1:45 AM - 2:45 AM IST NEXT DAY)
+    engShortUS: {
+      sequence: ['01:30 AM', '01:45 AM', '02:00 AM', '02:15 AM', '02:30 AM', '02:45 AM', '03:00 AM'],
+      targetIndices: [1, 2, 3, 4, 5] // 01:45 AM to 02:45 AM
+    }
   };
 
-  const ITEM_HEIGHT = 48; // px
-  const CENTER_OFFSET = 32; // (wheel-height 112 - item-height 48) / 2 = 32px
+  const ITEM_HEIGHT = 40; // px
+  // In a 120px viewport, the center item sits at y = 40px (from 40px to 80px).
+  // The upper item sits at y = 0px (from 0px to 40px).
+  // The lower item sits at y = 80px (from 80px to 120px).
 
   let currentTimes = {
     hinVideo: '',
@@ -860,6 +883,23 @@
     return today;
   }
 
+  function setTargetQuickDate(offsetDays) {
+    const d = new Date();
+    d.setDate(d.getDate() + offsetDays);
+    document.getElementById('datePicker').value = d.toISOString().split('T')[0];
+    onDateChanged();
+  }
+
+  function setTargetNextWeekend() {
+    const d = new Date();
+    const day = d.getDay();
+    let daysUntilSat = (6 - day + 7) % 7;
+    if (daysUntilSat === 0 && day !== 6) daysUntilSat = 7;
+    d.setDate(d.getDate() + daysUntilSat);
+    document.getElementById('datePicker').value = d.toISOString().split('T')[0];
+    onDateChanged();
+  }
+
   function onDateChanged() {
     updateDateDisplay();
     spinAllSequential();
@@ -872,8 +912,8 @@
 
     const isWeekend = (baseDate.getDay() === 0 || baseDate.getDay() === 6);
     document.getElementById('hinNote').textContent = isWeekend 
-      ? 'Weekend: Morning Video (9–10 AM) → Lunch Short (12:30–2:30 PM)' 
-      : 'Weekday: Evening Video (4–5 PM) → Night Short (5:30–7 PM)';
+      ? 'Weekend: Morning Video (9–10:15 AM) → Lunch Short (12:30–2:30 PM)' 
+      : 'Weekday: Evening Video (4–5:15 PM) → Night Short (5:30–7 PM)';
 
     const baseStr = formatDate(baseDate);
     const nextStr = formatDate(nextDate);
@@ -888,35 +928,49 @@
   }
 
   /**
-   * iPhone Drum Reel Rolling Motion
+   * Scrolls the 3-Row drum reel:
+   * Displays Upper (-15m), Center (Selected), and Lower (+15m) times symmetrically!
    */
-  function scrollDrum(stripId, pool, duration, tickCount) {
+  function scrollDrum(stripId, poolConfig, duration, tickCount) {
     const strip = document.getElementById(stripId);
-    const chosenTime = pool[Math.floor(Math.random() * pool.length)];
+    const { sequence, targetIndices } = poolConfig;
 
-    // Create random items sequence ending on chosenTime
-    const count = 16;
+    // Pick one valid center target index
+    const targetIdx = targetIndices[Math.floor(Math.random() * targetIndices.length)];
+    const upperTime = sequence[targetIdx - 1];
+    const centerTime = sequence[targetIdx];
+    const lowerTime = sequence[targetIdx + 1];
+
+    // Build drum reel strip:
+    // Starts with random rolling sequence, and terminates cleanly with [upperTime, centerTime, lowerTime]
+    const randomCount = 16;
     const items = [];
-    for (let i = 0; i < count - 1; i++) {
-      items.push(pool[Math.floor(Math.random() * pool.length)]);
+    for (let i = 0; i < randomCount; i++) {
+      items.push(sequence[Math.floor(Math.random() * sequence.length)]);
     }
-    items.push(chosenTime);
+    // Symmetrical final trio
+    items.push(upperTime);  // index: items.length - 3
+    items.push(centerTime); // index: items.length - 2 (Center target!)
+    items.push(lowerTime);  // index: items.length - 1
 
     strip.innerHTML = items.map(t => `<div class="drum-cell">${t}</div>`).join('');
 
-    // Reset without transition
+    // Reset translation instantly
     strip.style.transition = 'none';
-    strip.style.transform = `translateY(${CENTER_OFFSET}px)`;
-    void strip.offsetHeight; // force layout repaint
+    strip.style.transform = `translateY(40px)`;
+    void strip.offsetHeight; // force reflow
 
-    // Momentum friction spring ease-out to target cell
-    const targetY = -((items.length - 1) * ITEM_HEIGHT) + CENTER_OFFSET;
+    // To align centerTime (at index items.length - 2) with the center lens at y = 40px:
+    const targetCenterIndex = items.length - 2;
+    const targetY = 40 - (targetCenterIndex * ITEM_HEIGHT);
+
+    // Emil Kowalski spring friction curve
     strip.style.transition = `transform ${duration}ms cubic-bezier(0.12, 0.9, 0.22, 1.05)`;
     strip.style.transform = `translateY(${targetY}px)`;
 
     triggerDecelerationTicks(duration, tickCount);
 
-    return chosenTime;
+    return centerTime;
   }
 
   function triggerDecelerationTicks(duration, count) {
@@ -940,19 +994,19 @@
     const isWeekend = (baseDate.getDay() === 0 || baseDate.getDay() === 6);
 
     if (row === 'hin') {
-      const vPool = isWeekend ? POOLS.hinVideoWeekend : POOLS.hinVideoWeekday;
-      const sPool = isWeekend ? POOLS.hinShortWeekend : POOLS.hinShortWeekday;
+      const vPool = isWeekend ? CONTINUOUS_POOLS.hinVideoWeekend : CONTINUOUS_POOLS.hinVideoWeekday;
+      const sPool = isWeekend ? CONTINUOUS_POOLS.hinShortWeekend : CONTINUOUS_POOLS.hinShortWeekday;
 
-      currentTimes.hinVideo = scrollDrum('hinVideoStrip', vPool, 1200, 14);
+      currentTimes.hinVideo = scrollDrum('hinVideoStrip', vPool, 1150, 14);
       setTimeout(() => {
-        currentTimes.hinShort = scrollDrum('hinShortStrip', sPool, 1400, 16);
-      }, 280);
+        currentTimes.hinShort = scrollDrum('hinShortStrip', sPool, 1350, 16);
+      }, 260);
 
     } else if (row === 'eng') {
-      currentTimes.engVideo = scrollDrum('engVideoStrip', POOLS.engVideoUS, 1200, 14);
+      currentTimes.engVideo = scrollDrum('engVideoStrip', CONTINUOUS_POOLS.engVideoUS, 1150, 14);
       setTimeout(() => {
-        currentTimes.engShort = scrollDrum('engShortStrip', POOLS.engShortUS, 1400, 16);
-      }, 280);
+        currentTimes.engShort = scrollDrum('engShortStrip', CONTINUOUS_POOLS.engShortUS, 1350, 16);
+      }, 260);
     }
   }
 
@@ -964,7 +1018,7 @@
     spinRow('hin');
     setTimeout(() => {
       spinRow('eng');
-    }, 420);
+    }, 400);
   }
 
   /**
@@ -1037,7 +1091,6 @@ Target Base: ${baseStr}
 
   // Keyboard Shortcuts: R or Space = Spin All, C = Copy All
   window.addEventListener('keydown', (e) => {
-    // Avoid triggering when focused on date input
     if (document.activeElement.tagName === 'INPUT') return;
 
     if (e.key === 'r' || e.key === 'R' || e.code === 'Space') {
