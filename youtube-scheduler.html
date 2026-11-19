@@ -12,23 +12,23 @@
   
   <style>
     /* -------------------------------------------------------------------------
-       Vercel & Emil Kowalski Design Tokens
+       Vercel & Emil Kowalski Design Tokens & Motion Physics
        ------------------------------------------------------------------------- */
     :root {
       --bg: #000000;
-      --card-bg: #0A0A0C;
+      --card-bg: #090A0E;
       --card-border: rgba(255, 255, 255, 0.08);
       --card-border-hover: rgba(255, 255, 255, 0.16);
       
-      --row-bg: #0E0F14;
+      --row-bg: #0D0E13;
       --row-border: rgba(255, 255, 255, 0.07);
-      --row-border-hover: rgba(255, 255, 255, 0.15);
+      --row-border-hover: rgba(255, 255, 255, 0.16);
       
-      --slot-bg: #14161E;
+      --slot-bg: #13151D;
       --slot-border: rgba(255, 255, 255, 0.08);
-      --slot-border-hover: rgba(255, 255, 255, 0.18);
+      --slot-border-hover: rgba(255, 255, 255, 0.2);
       
-      --drum-bg: #090A0E;
+      --drum-bg: #07080B;
       --drum-border: rgba(255, 255, 255, 0.06);
       
       --text-primary: #FFFFFF;
@@ -36,7 +36,7 @@
       --text-tertiary: #64748B;
       
       --blue: #0070F3;
-      --blue-glow: rgba(0, 112, 243, 0.3);
+      --blue-glow: rgba(0, 112, 243, 0.35);
       
       --red: #FF453A;
       --red-bg: rgba(255, 69, 58, 0.12);
@@ -44,7 +44,7 @@
       
       --green: #30D158;
       --green-bg: rgba(48, 209, 88, 0.12);
-      --green-border: rgba(48, 209, 88, 0.26);
+      --green-border: rgba(48, 209, 88, 0.28);
       
       --amber: #FF9F0A;
       --amber-bg: rgba(255, 159, 10, 0.14);
@@ -52,15 +52,16 @@
       
       --purple: #BF5AF2;
       --purple-bg: rgba(191, 90, 242, 0.12);
-      --purple-border: rgba(191, 90, 242, 0.26);
+      --purple-border: rgba(191, 90, 242, 0.28);
       
-      /* Emil Kowalski Animation Easing Curves */
+      /* Emil Kowalski Curves */
       --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
       --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
       --ease-spring: cubic-bezier(0.12, 0.9, 0.22, 1.05);
+      --ease-snappy: cubic-bezier(0.2, 0.8, 0.2, 1);
       
-      --item-height: 40px;
-      --wheel-height: 120px;
+      --item-height: 42px;
+      --wheel-height: 126px; /* Exactly 3 items (Upper: 0-42, Center: 42-84, Lower: 84-126) */
     }
 
     * {
@@ -78,9 +79,11 @@
       min-height: 100vh;
       display: flex;
       flex-direction: column;
-      padding: clamp(16px, 3.5vw, 40px);
-      padding-top: max(clamp(16px, 3.5vw, 40px), env(safe-area-inset-top));
-      padding-bottom: max(clamp(20px, 4vw, 48px), env(safe-area-inset-bottom));
+      padding: clamp(14px, 2.8vw, 36px);
+      padding-top: max(clamp(14px, 2.8vw, 36px), env(safe-area-inset-top));
+      padding-bottom: max(clamp(20px, 4vw, 44px), env(safe-area-inset-bottom));
+      padding-left: max(clamp(14px, 2.8vw, 36px), env(safe-area-inset-left));
+      padding-right: max(clamp(14px, 2.8vw, 36px), env(safe-area-inset-right));
       width: 100%;
       position: relative;
       overflow-x: hidden;
@@ -91,19 +94,20 @@
     body::before {
       content: '';
       position: absolute;
-      top: -180px;
+      top: -160px;
       left: 50%;
       transform: translateX(-50%);
-      width: 1000px;
-      height: 450px;
-      background: radial-gradient(50% 50% at 50% 50%, rgba(0, 112, 243, 0.1) 0%, transparent 100%);
+      width: 100%;
+      max-width: 1100px;
+      height: 420px;
+      background: radial-gradient(50% 50% at 50% 50%, rgba(0, 112, 243, 0.12) 0%, transparent 100%);
       pointer-events: none;
       z-index: 0;
     }
 
     .container {
       width: 100%;
-      max-width: 1360px;
+      max-width: 1320px;
       margin: 0 auto;
       position: relative;
       z-index: 1;
@@ -113,20 +117,41 @@
     }
 
     /* -------------------------------------------------------------------------
-       Header & Top Navigation
+       Staggered Entrance Animation
+       ------------------------------------------------------------------------- */
+    .animate-entrance {
+      animation: springFadeIn 500ms var(--ease-out-expo) backwards;
+    }
+    .delay-1 { animation-delay: 40ms; }
+    .delay-2 { animation-delay: 100ms; }
+    .delay-3 { animation-delay: 160ms; }
+
+    @keyframes springFadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(16px) scale(0.99);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    /* -------------------------------------------------------------------------
+       Header & Navigation Toolbar (Full Responsive)
        ------------------------------------------------------------------------- */
     header {
       width: 100%;
       background: var(--card-bg);
       border: 1px solid var(--card-border);
       border-radius: 18px;
-      padding: 18px 24px;
+      padding: 16px 22px;
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
       gap: 16px;
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
     }
@@ -134,7 +159,7 @@
     .brand-section {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 3px;
     }
 
     .brand-row {
@@ -149,10 +174,16 @@
       border-radius: 50%;
       background: var(--green);
       box-shadow: 0 0 12px var(--green);
+      animation: pulseBreathe 2.4s infinite ease-in-out;
+    }
+
+    @keyframes pulseBreathe {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.45; transform: scale(0.85); }
     }
 
     h1 {
-      font-size: 21px;
+      font-size: clamp(18px, 2.4vw, 21px);
       font-weight: 800;
       letter-spacing: -0.025em;
       color: #FFF;
@@ -160,7 +191,7 @@
     }
 
     .deck {
-      font-size: 13px;
+      font-size: 12.5px;
       color: var(--text-secondary);
       letter-spacing: -0.01em;
     }
@@ -173,32 +204,39 @@
     }
 
     .quick-pill-btn {
-      background: #14161E;
+      background: #13151D;
       border: 1px solid var(--card-border);
       color: var(--text-secondary);
-      padding: 8px 12px;
+      padding: 8px 13px;
       border-radius: 10px;
-      font-size: 12.5px;
+      font-size: 12px;
       font-weight: 600;
       cursor: pointer;
-      transition: all 150ms var(--ease-out);
+      transition: background 150ms var(--ease-out), color 150ms var(--ease-out), border-color 150ms var(--ease-out), transform 120ms var(--ease-out);
     }
 
     .quick-pill-btn:hover {
-      background: #1F222E;
+      background: #1C1F2B;
       color: #FFF;
       border-color: var(--card-border-hover);
     }
 
     .quick-pill-btn:active {
-      transform: scale(0.97);
+      transform: scale(0.96);
+    }
+
+    .quick-pill-btn.active {
+      background: #FFFFFF;
+      color: #000000;
+      border-color: #FFFFFF;
+      font-weight: 700;
     }
 
     input[type="date"] {
-      background: #14161E;
+      background: #13151D;
       border: 1px solid var(--card-border);
       color: #FFF;
-      padding: 9px 13px;
+      padding: 8px 12px;
       border-radius: 10px;
       font-family: 'JetBrains Mono', monospace;
       font-size: 13px;
@@ -215,28 +253,28 @@
     }
 
     .btn-icon {
-      background: #14161E;
+      background: #13151D;
       border: 1px solid var(--card-border);
       border-radius: 10px;
-      width: 40px;
-      height: 40px;
+      width: 38px;
+      height: 38px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
       color: var(--text-secondary);
       font-size: 15px;
-      transition: background 150ms var(--ease-out), color 150ms var(--ease-out), transform 120ms var(--ease-out);
+      transition: background 150ms var(--ease-out), color 150ms var(--ease-out), border-color 150ms var(--ease-out), transform 120ms var(--ease-out);
     }
 
     .btn-icon:hover {
-      background: #1F222E;
+      background: #1C1F2B;
       color: #FFF;
       border-color: var(--card-border-hover);
     }
 
     .btn-icon:active {
-      transform: scale(0.97);
+      transform: scale(0.96);
     }
 
     .btn-icon.muted {
@@ -248,7 +286,7 @@
       color: #000000;
       border: none;
       border-radius: 10px;
-      padding: 10px 18px;
+      padding: 9px 18px;
       font-size: 13.5px;
       font-weight: 700;
       letter-spacing: -0.01em;
@@ -270,6 +308,15 @@
       transform: scale(0.97);
     }
 
+    .btn-spin-all .spin-icon {
+      display: inline-block;
+      transition: transform 500ms var(--ease-spring);
+    }
+
+    .btn-spin-all:hover .spin-icon {
+      transform: rotate(180deg);
+    }
+
     kbd {
       font-family: 'JetBrains Mono', monospace;
       font-size: 11px;
@@ -282,13 +329,13 @@
     }
 
     /* -------------------------------------------------------------------------
-       2 Full-Width Rows
+       2 Full-Width Schedule Rows (Fluid & Adaptable Architecture)
        ------------------------------------------------------------------------- */
     .schedule-stack {
       width: 100%;
       display: flex;
       flex-direction: column;
-      gap: 18px;
+      gap: 20px;
     }
 
     .schedule-row {
@@ -296,27 +343,43 @@
       background: var(--row-bg);
       border: 1px solid var(--row-border);
       border-radius: 22px;
-      padding: 24px 28px;
+      padding: 22px 26px;
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 24px;
+      flex-direction: column;
+      gap: 18px;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-      transition: border-color 200ms var(--ease-out), box-shadow 200ms var(--ease-out);
+      transition: border-color 200ms var(--ease-out), box-shadow 200ms var(--ease-out), transform 200ms var(--ease-out);
     }
 
     @media (hover: hover) and (pointer: fine) {
       .schedule-row:hover {
         border-color: var(--row-border-hover);
-        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+        box-shadow: 0 16px 44px rgba(0, 0, 0, 0.5);
       }
     }
 
+    /* Row Top Bar */
+    .row-top-bar {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      padding-bottom: 4px;
+    }
+
     .row-meta-col {
-      min-width: 220px;
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 4px;
+    }
+
+    .row-tag-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
     }
 
     .row-tag {
@@ -328,42 +391,119 @@
       border-radius: 6px;
       display: inline-flex;
       align-items: center;
-      width: fit-content;
     }
     .tag-hin { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
     .tag-eng { background: rgba(0, 112, 243, 0.12); color: #3291FF; border: 1px solid rgba(0, 112, 243, 0.28); }
 
+    .row-strategy-pill {
+      font-size: 12px;
+      color: var(--text-secondary);
+      letter-spacing: -0.01em;
+    }
+
     .row-heading {
-      font-size: 21px;
+      font-size: clamp(20px, 2.5vw, 23px);
       font-weight: 800;
       letter-spacing: -0.025em;
       color: #FFF;
     }
 
-    .row-sub {
-      font-size: 12.5px;
-      color: var(--text-secondary);
-      letter-spacing: -0.01em;
-      line-height: 1.4;
+    .row-actions-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
 
-    /* Slots Sequence Group */
+    .btn-row-spin {
+      background: #14161F;
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      width: 40px;
+      height: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--text-secondary);
+      font-size: 16px;
+      transition: background 150ms var(--ease-out), color 150ms var(--ease-out), transform 250ms var(--ease-spring);
+    }
+
+    .btn-row-spin:hover {
+      background: #1D212F;
+      color: #FFF;
+      transform: rotate(90deg);
+    }
+
+    .btn-row-spin:active {
+      transform: scale(0.94) rotate(90deg);
+    }
+
+    .btn-copy-schedule {
+      background: #FFFFFF;
+      color: #000000;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 10px;
+      padding: 10px 18px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 150ms var(--ease-out), border-color 150ms var(--ease-out), transform 120ms var(--ease-out), box-shadow 150ms var(--ease-out);
+      box-shadow: 0 2px 8px rgba(255, 255, 255, 0.12);
+    }
+
+    .btn-copy-schedule:hover {
+      background: #EDEDED;
+      transform: translateY(-1px);
+    }
+
+    .btn-copy-schedule:active {
+      transform: scale(0.97);
+    }
+
+    .btn-copy-schedule.copied {
+      background: #30D158;
+      color: #000000;
+      border-color: #30D158;
+    }
+
+    /* -------------------------------------------------------------------------
+       Slots Sequence Layout (Fluid Flexbox Grid)
+       ------------------------------------------------------------------------- */
     .slots-sequence-wrap {
       display: flex;
       align-items: center;
-      gap: 18px;
-      flex: 1;
-      justify-content: space-evenly;
+      gap: 16px;
+      width: 100%;
+    }
+
+    .step-connector {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 0 4px;
+      user-select: none;
     }
 
     .step-arrow {
       color: var(--text-tertiary);
-      font-size: 22px;
-      font-weight: 600;
-      user-select: none;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      font-size: 20px;
+      font-weight: 700;
+      transition: transform 200ms var(--ease-out), color 200ms var(--ease-out);
+    }
+
+    .connector-text {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-tertiary);
+      white-space: nowrap;
     }
 
     /* Individual Slot Card */
@@ -373,24 +513,25 @@
       border-radius: 16px;
       padding: 16px 18px 14px;
       flex: 1;
-      max-width: 420px;
-      min-width: 260px;
       display: flex;
       flex-direction: column;
       gap: 10px;
       box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 6px 18px rgba(0, 0, 0, 0.35);
       position: relative;
-      transition: border-color 150ms var(--ease-out);
+      transition: border-color 150ms var(--ease-out), transform 150ms var(--ease-out);
     }
 
-    .slot-card:hover {
-      border-color: var(--slot-border-hover);
+    @media (hover: hover) and (pointer: fine) {
+      .slot-card:hover {
+        border-color: var(--slot-border-hover);
+      }
     }
 
     .slot-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 8px;
     }
 
     .step-badge {
@@ -434,13 +575,15 @@
        (Upper Time, Center Selected Time in Lens, Lower Time)
        ------------------------------------------------------------------------- */
     .drum-viewport {
-      height: var(--wheel-height); /* 120px = 3 items */
+      height: var(--wheel-height); /* 126px */
       position: relative;
       overflow: hidden;
       border-radius: 12px;
       background: var(--drum-bg);
       border: 1px solid var(--drum-border);
       perspective: 500px;
+      cursor: ns-resize;
+      user-select: none;
       /* Smooth 3D Cylindrical Eased Fade Mask */
       -webkit-mask-image: linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.5) 18%, black 36%, black 64%, rgba(0,0,0,0.5) 82%, transparent 100%);
       mask-image: linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.5) 18%, black 36%, black 64%, rgba(0,0,0,0.5) 82%, transparent 100%);
@@ -449,16 +592,22 @@
     /* Center Frosted Glass Selection Lens */
     .drum-lens {
       position: absolute;
-      top: 40px; /* Perfectly centered for item-height 40px in 120px viewport */
+      top: 42px; /* Center slot for item-height 42px */
       left: 6px;
       right: 6px;
-      height: 40px;
+      height: 42px;
       background: rgba(255, 255, 255, 0.05);
       border: 1px solid rgba(255, 255, 255, 0.16);
       border-radius: 8px;
       pointer-events: none;
       z-index: 2;
       box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 4px 16px rgba(0, 0, 0, 0.5);
+      transition: border-color 200ms ease, box-shadow 200ms ease;
+    }
+
+    .drum-viewport.pulsing .drum-lens {
+      border-color: rgba(48, 209, 88, 0.6);
+      box-shadow: 0 0 16px rgba(48, 209, 88, 0.25);
     }
 
     .drum-strip {
@@ -470,10 +619,11 @@
       will-change: transform;
       display: flex;
       flex-direction: column;
+      transform-style: preserve-3d;
     }
 
     .drum-cell {
-      height: var(--item-height); /* 40px */
+      height: var(--item-height); /* 42px */
       display: flex;
       align-items: center;
       justify-content: center;
@@ -481,70 +631,46 @@
       font-size: 21px;
       font-weight: 700;
       color: #FFFFFF;
-      letter-spacing: -0.02em;
+      letter-spacing: -0.025em;
       font-variant-numeric: tabular-nums;
       user-select: none;
       text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9);
-      transition: opacity 180ms ease, transform 180ms ease;
+      transition: opacity 160ms var(--ease-out), transform 160ms var(--ease-out), color 160ms var(--ease-out);
     }
 
-    /* Row Actions */
-    .row-actions-group {
+    /* Wheel Interactive Slots */
+    .drum-cell.cell-upper {
+      opacity: 0.36;
+      transform: rotateX(24deg) scale(0.93);
+      cursor: pointer;
+    }
+
+    .drum-cell.cell-center {
+      opacity: 1;
+      transform: rotateX(0deg) scale(1.02);
+      color: #FFFFFF;
+      cursor: pointer;
+    }
+
+    .drum-cell.cell-lower {
+      opacity: 0.36;
+      transform: rotateX(-24deg) scale(0.93);
+      cursor: pointer;
+    }
+
+    .slot-hint-text {
+      font-size: 11px;
+      color: var(--text-tertiary);
       display: flex;
       align-items: center;
-      gap: 10px;
-      min-width: 140px;
-      justify-content: flex-end;
+      justify-content: space-between;
+      padding: 0 4px;
     }
 
-    .btn-row-spin {
-      background: #14161E;
-      border: 1px solid var(--card-border);
-      border-radius: 10px;
-      width: 42px;
-      height: 42px;
+    .slot-hint-text span {
       display: inline-flex;
       align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      color: var(--text-secondary);
-      font-size: 16px;
-      transition: background 150ms var(--ease-out), color 150ms var(--ease-out), transform 150ms var(--ease-out);
-    }
-
-    .btn-row-spin:hover {
-      background: #1F222E;
-      color: #FFF;
-      transform: rotate(35deg);
-    }
-
-    .btn-row-spin:active {
-      transform: scale(0.95);
-    }
-
-    .btn-copy-schedule {
-      background: #FFFFFF;
-      color: #000000;
-      border: none;
-      border-radius: 10px;
-      padding: 11px 18px;
-      font-size: 13px;
-      font-weight: 700;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      transition: background 150ms var(--ease-out), transform 120ms var(--ease-out), box-shadow 150ms var(--ease-out);
-      box-shadow: 0 2px 8px rgba(255, 255, 255, 0.12);
-    }
-
-    .btn-copy-schedule:hover {
-      background: #EDEDED;
-      transform: translateY(-1px);
-    }
-
-    .btn-copy-schedule:active {
-      transform: scale(0.97);
+      gap: 3px;
     }
 
     /* -------------------------------------------------------------------------
@@ -552,11 +678,11 @@
        ------------------------------------------------------------------------- */
     .sonner-toast {
       position: fixed;
-      bottom: 28px;
+      bottom: 24px;
       left: 50%;
       transform: translateX(-50%) translateY(40px) scale(0.95);
       background: #18181B;
-      border: 1px solid rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.16);
       color: #FFFFFF;
       padding: 12px 24px;
       border-radius: 9999px;
@@ -587,6 +713,7 @@
       font-size: 12px;
       color: var(--text-tertiary);
       padding-top: 6px;
+      flex-wrap: wrap;
     }
 
     .shortcuts-footer span {
@@ -596,7 +723,7 @@
     }
 
     .kbd-tag {
-      background: #14161E;
+      background: #13151D;
       border: 1px solid var(--card-border);
       color: var(--text-secondary);
       font-family: 'JetBrains Mono', monospace;
@@ -605,27 +732,81 @@
       font-size: 11px;
     }
 
-    @media (max-width: 960px) {
-      .schedule-row {
-        flex-direction: column;
-        align-items: stretch;
-      }
+    /* -------------------------------------------------------------------------
+       Full Responsive Breakpoints (Mobile, Tablet, Desktop)
+       ------------------------------------------------------------------------- */
+    @media (max-width: 900px) {
       .slots-sequence-wrap {
         flex-direction: column;
+        gap: 12px;
       }
-      .step-arrow {
+      .step-connector {
         transform: rotate(90deg);
+        padding: 4px 0;
+      }
+      .connector-text {
+        display: none;
       }
       .slot-card {
+        width: 100%;
         max-width: 100%;
+      }
+      .row-top-bar {
+        align-items: flex-start;
+      }
+    }
+
+    @media (max-width: 640px) {
+      body {
+        padding: 12px;
+      }
+      header {
+        padding: 14px 16px;
+      }
+      .controls-group {
+        width: 100%;
+        justify-content: space-between;
+      }
+      .quick-pill-btn {
+        flex: 1;
+        text-align: center;
+        padding: 8px 4px;
+      }
+      input[type="date"] {
         width: 100%;
       }
+      .btn-spin-all {
+        width: 100%;
+        justify-content: center;
+      }
+      .schedule-row {
+        padding: 16px 18px;
+        border-radius: 18px;
+      }
       .row-actions-group {
-        justify-content: flex-end;
+        width: 100%;
+        justify-content: space-between;
+        margin-top: 4px;
+      }
+      .btn-copy-schedule {
+        flex: 1;
+        justify-content: center;
       }
       .shortcuts-footer {
         flex-direction: column;
         gap: 6px;
+        text-align: center;
+      }
+    }
+
+    /* Reduced Motion Accessibility */
+    @media (prefers-reduced-motion: reduce) {
+      .animate-entrance { animation: none !important; }
+      .status-dot { animation: none !important; }
+      .drum-strip { transition: opacity 150ms ease !important; }
+      .btn-spin-all, .btn-icon, .btn-row-spin, .btn-copy-schedule {
+        transition: none !important;
+        transform: none !important;
       }
     }
   </style>
@@ -634,29 +815,29 @@
 
 <div class="container">
 
-  <!-- Header -->
-  <header>
+  <!-- Header & Toolbar -->
+  <header class="animate-entrance delay-1">
     <div class="brand-section">
       <div class="brand-row">
         <span class="status-dot" aria-hidden="true"></span>
         <h1>YouTube Studio Scheduler</h1>
       </div>
-      <p class="deck">Authentic 3-Row Wheel Picker · Video First → Shorts Second · 15-Minute Grid</p>
+      <p class="deck">Interactive 3D Wheel Picker · Video First → Shorts Second · 15-Minute Grid</p>
     </div>
 
     <div class="controls-group">
-      <button type="button" class="quick-pill-btn" onclick="setTargetQuickDate(0)">Today</button>
-      <button type="button" class="quick-pill-btn" onclick="setTargetQuickDate(1)">Tomorrow</button>
-      <button type="button" class="quick-pill-btn" onclick="setTargetNextWeekend()">Weekend</button>
+      <button type="button" class="quick-pill-btn" id="pillToday" onclick="setTargetQuickDate(0)">Today</button>
+      <button type="button" class="quick-pill-btn" id="pillTomorrow" onclick="setTargetQuickDate(1)">Tomorrow</button>
+      <button type="button" class="quick-pill-btn" id="pillWeekend" onclick="setTargetNextWeekend()">Weekend</button>
 
       <input type="date" id="datePicker" onchange="onDateChanged()" aria-label="Upload Target Date">
       
-      <button class="btn-icon" id="audioToggleBtn" title="Toggle Wheel Haptic Audio" onclick="toggleAudio()" aria-label="Toggle Audio">
+      <button class="btn-icon" id="audioToggleBtn" title="Toggle Mechanical Haptic Audio" onclick="toggleAudio()" aria-label="Toggle Audio">
         🔊
       </button>
 
       <button class="btn-spin-all" onclick="spinAllSequential()" aria-label="Spin All Slots">
-        <span>🎲</span> Spin All <kbd>R</kbd>
+        <span class="spin-icon">🎲</span> Spin All <kbd>R</kbd>
       </button>
     </div>
   </header>
@@ -665,65 +846,94 @@
   <main class="schedule-stack">
 
     <!-- ROW 1: Hindi & Gujarati -->
-    <section class="schedule-row" aria-labelledby="hinRowHeading">
-      <div class="row-meta-col">
-        <span class="row-tag tag-hin">Row 1</span>
-        <h2 class="row-heading" id="hinRowHeading">Hindi &amp; Gujarati</h2>
-        <p class="row-sub" id="hinNote">Video first, then Shorts after</p>
+    <section class="schedule-row animate-entrance delay-2" aria-labelledby="hinRowHeading">
+      <div class="row-top-bar">
+        <div class="row-meta-col">
+          <div class="row-tag-wrap">
+            <span class="row-tag tag-hin">Row 1</span>
+            <span class="row-strategy-pill" id="hinNote">Weekday: 4–5:15 PM Video → 5:30–7 PM Short</span>
+          </div>
+          <h2 class="row-heading" id="hinRowHeading">Hindi &amp; Gujarati</h2>
+        </div>
+
+        <div class="row-actions-group">
+          <button class="btn-row-spin" title="Spin Hindi & Gujarati" onclick="spinRow('hin')" aria-label="Spin Hindi Row">
+            🔄
+          </button>
+          <button class="btn-copy-schedule" id="hinCopyBtn" onclick="copyRowSchedule('Hindi & Gujarati', 'hinVideoDateText', currentTimes.hinVideo, 'hinShortDateText', currentTimes.hinShort, 'hinCopyBtn')">
+            📋 Copy Schedule
+          </button>
+        </div>
       </div>
 
       <div class="slots-sequence-wrap">
         
         <!-- STEP 1: Video First -->
-        <article class="slot-card">
+        <article class="slot-card" id="cardHinVideo">
           <div class="slot-header">
             <span class="step-badge badge-video">1️⃣ Video (Upload First)</span>
             <time class="slot-date" id="hinVideoDateText">--</time>
           </div>
-          <div class="drum-viewport" aria-label="Hindi Video Time Reel">
+          <div class="drum-viewport" id="viewportHinVideo" aria-label="Hindi Video Time Reel">
             <div class="drum-lens"></div>
             <div class="drum-strip" id="hinVideoStrip"></div>
           </div>
+          <div class="slot-hint-text">
+            <span>Scroll wheel or click upper/lower</span>
+            <span>15m grid</span>
+          </div>
         </article>
 
-        <div class="step-arrow" aria-hidden="true">→</div>
+        <!-- Connector Arrow -->
+        <div class="step-connector" aria-hidden="true">
+          <span class="step-arrow">→</span>
+          <span class="connector-text">Then</span>
+        </div>
 
         <!-- STEP 2: Short Second -->
-        <article class="slot-card">
+        <article class="slot-card" id="cardHinShort">
           <div class="slot-header">
             <span class="step-badge badge-short">2️⃣ Short (Upload After)</span>
             <time class="slot-date" id="hinShortDateText">--</time>
           </div>
-          <div class="drum-viewport" aria-label="Hindi Short Time Reel">
+          <div class="drum-viewport" id="viewportHinShort" aria-label="Hindi Short Time Reel">
             <div class="drum-lens"></div>
             <div class="drum-strip" id="hinShortStrip"></div>
+          </div>
+          <div class="slot-hint-text">
+            <span>Scroll wheel or click upper/lower</span>
+            <span>15m grid</span>
           </div>
         </article>
 
       </div>
-
-      <div class="row-actions-group">
-        <button class="btn-row-spin" title="Spin Hindi & Gujarati" onclick="spinRow('hin')" aria-label="Spin Hindi Row">
-          🔄
-        </button>
-        <button class="btn-copy-schedule" onclick="copyRowSchedule('Hindi & Gujarati', 'hinVideoDateText', currentTimes.hinVideo, 'hinShortDateText', currentTimes.hinShort)">
-          📋 Copy
-        </button>
-      </div>
     </section>
 
     <!-- ROW 2: English (US Direct Focus) -->
-    <section class="schedule-row" aria-labelledby="engRowHeading">
-      <div class="row-meta-col">
-        <span class="row-tag tag-eng">Row 2</span>
-        <h2 class="row-heading" id="engRowHeading">English</h2>
-        <p class="row-sub">US Afternoon target · Date rolls +1 Day in Studio</p>
+    <section class="schedule-row animate-entrance delay-3" aria-labelledby="engRowHeading">
+      <div class="row-top-bar">
+        <div class="row-meta-col">
+          <div class="row-tag-wrap">
+            <span class="row-tag tag-eng">Row 2</span>
+            <span class="row-strategy-pill">US Afternoon target · Date rolls +1 Day in Studio</span>
+          </div>
+          <h2 class="row-heading" id="engRowHeading">English</h2>
+        </div>
+
+        <div class="row-actions-group">
+          <button class="btn-row-spin" title="Spin English" onclick="spinRow('eng')" aria-label="Spin English Row">
+            🔄
+          </button>
+          <button class="btn-copy-schedule" id="engCopyBtn" onclick="copyRowSchedule('English', 'engVideoDateText', currentTimes.engVideo, 'engShortDateText', currentTimes.engShort, 'engCopyBtn')">
+            📋 Copy Schedule
+          </button>
+        </div>
       </div>
 
       <div class="slots-sequence-wrap">
         
         <!-- STEP 1: Video First (Rolled Over Date) -->
-        <article class="slot-card">
+        <article class="slot-card" id="cardEngVideo">
           <div class="slot-header">
             <span class="step-badge badge-video">1️⃣ Video (Upload First)</span>
             <time class="slot-date">
@@ -731,16 +941,24 @@
               <span class="badge-rollover">+1 Day</span>
             </time>
           </div>
-          <div class="drum-viewport" aria-label="English Video Time Reel">
+          <div class="drum-viewport" id="viewportEngVideo" aria-label="English Video Time Reel">
             <div class="drum-lens"></div>
             <div class="drum-strip" id="engVideoStrip"></div>
           </div>
+          <div class="slot-hint-text">
+            <span>Scroll wheel or click upper/lower</span>
+            <span>15m grid</span>
+          </div>
         </article>
 
-        <div class="step-arrow" aria-hidden="true">→</div>
+        <!-- Connector Arrow -->
+        <div class="step-connector" aria-hidden="true">
+          <span class="step-arrow">→</span>
+          <span class="connector-text">Then</span>
+        </div>
 
         <!-- STEP 2: Short Second (Rolled Over Date) -->
-        <article class="slot-card">
+        <article class="slot-card" id="cardEngShort">
           <div class="slot-header">
             <span class="step-badge badge-short">2️⃣ Short (Upload After)</span>
             <time class="slot-date">
@@ -748,21 +966,16 @@
               <span class="badge-rollover">+1 Day</span>
             </time>
           </div>
-          <div class="drum-viewport" aria-label="English Short Time Reel">
+          <div class="drum-viewport" id="viewportEngShort" aria-label="English Short Time Reel">
             <div class="drum-lens"></div>
             <div class="drum-strip" id="engShortStrip"></div>
           </div>
+          <div class="slot-hint-text">
+            <span>Scroll wheel or click upper/lower</span>
+            <span>15m grid</span>
+          </div>
         </article>
 
-      </div>
-
-      <div class="row-actions-group">
-        <button class="btn-row-spin" title="Spin English" onclick="spinRow('eng')" aria-label="Spin English Row">
-          🔄
-        </button>
-        <button class="btn-copy-schedule" onclick="copyRowSchedule('English', 'engVideoDateText', currentTimes.engVideo, 'engShortDateText', currentTimes.engShort)">
-          📋 Copy
-        </button>
       </div>
     </section>
 
@@ -774,7 +987,7 @@
     <span>•</span>
     <span>Press <span class="kbd-tag">C</span> to copy all schedules</span>
     <span>•</span>
-    <span>Upper, Center &amp; Lower 15-min intervals</span>
+    <span>Scroll wheel or swipe any drum</span>
   </footer>
 
 </div>
@@ -786,55 +999,60 @@
 
 <script>
   /**
-   * Continuous 15-minute slot sequences with buffer slots
-   * This guarantees that when a center time is chosen, its upper (-15m)
+   * Continuous 15-minute slot pools with buffer slots.
+   * Guarantees that when a center time is chosen, its upper (-15m)
    * and lower (+15m) neighbors ALWAYS exist and display symmetrically!
    */
   const CONTINUOUS_POOLS = {
     // Weekday Hindi Video: Targets are 4:00 PM to 5:15 PM
     hinVideoWeekday: {
       sequence: ['03:45 PM', '04:00 PM', '04:15 PM', '04:30 PM', '04:45 PM', '05:00 PM', '05:15 PM', '05:30 PM'],
-      targetIndices: [1, 2, 3, 4, 5, 6] // 04:00 PM to 05:15 PM
+      targetIndices: [1, 2, 3, 4, 5, 6]
     },
     // Weekday Hindi Short: Targets are 5:30 PM to 7:00 PM (strictly after Video)
     hinShortWeekday: {
       sequence: ['05:15 PM', '05:30 PM', '05:45 PM', '06:00 PM', '06:15 PM', '06:30 PM', '06:45 PM', '07:00 PM', '07:15 PM'],
-      targetIndices: [1, 2, 3, 4, 5, 6, 7] // 05:30 PM to 07:00 PM
+      targetIndices: [1, 2, 3, 4, 5, 6, 7]
     },
 
     // Weekend Hindi Video: Targets are 9:00 AM to 10:15 AM
     hinVideoWeekend: {
       sequence: ['08:45 AM', '09:00 AM', '09:15 AM', '09:30 AM', '09:45 AM', '10:00 AM', '10:15 AM', '10:30 AM'],
-      targetIndices: [1, 2, 3, 4, 5, 6] // 09:00 AM to 10:15 AM
+      targetIndices: [1, 2, 3, 4, 5, 6]
     },
     // Weekend Hindi Short: Targets are 12:30 PM to 2:30 PM (lunch peak)
     hinShortWeekend: {
       sequence: ['12:15 PM', '12:30 PM', '12:45 PM', '01:00 PM', '01:15 PM', '01:30 PM', '01:45 PM', '02:00 PM', '02:15 PM', '02:30 PM', '02:45 PM'],
-      targetIndices: [1, 2, 3, 4, 5, 6, 7, 8, 9] // 12:30 PM to 02:30 PM
+      targetIndices: [1, 2, 3, 4, 5, 6, 7, 8, 9]
     },
 
     // English Video (US afternoon: 12:30 AM - 1:30 AM IST NEXT DAY)
     engVideoUS: {
       sequence: ['12:15 AM', '12:30 AM', '12:45 AM', '01:00 AM', '01:15 AM', '01:30 AM', '01:45 AM'],
-      targetIndices: [1, 2, 3, 4, 5] // 12:30 AM to 01:30 AM
+      targetIndices: [1, 2, 3, 4, 5]
     },
     // English Short (US afternoon: 1:45 AM - 2:45 AM IST NEXT DAY)
     engShortUS: {
       sequence: ['01:30 AM', '01:45 AM', '02:00 AM', '02:15 AM', '02:30 AM', '02:45 AM', '03:00 AM'],
-      targetIndices: [1, 2, 3, 4, 5] // 01:45 AM to 02:45 AM
+      targetIndices: [1, 2, 3, 4, 5]
     }
   };
 
-  const ITEM_HEIGHT = 40; // px
-  // In a 120px viewport, the center item sits at y = 40px (from 40px to 80px).
-  // The upper item sits at y = 0px (from 0px to 40px).
-  // The lower item sits at y = 80px (from 80px to 120px).
+  const ITEM_HEIGHT = 42; // px
 
   let currentTimes = {
     hinVideo: '',
     hinShort: '',
     engVideo: '',
     engShort: ''
+  };
+
+  // State tracker for interactive scrolling
+  let activeWheelIndices = {
+    hinVideo: 0,
+    hinShort: 0,
+    engVideo: 0,
+    engShort: 0
   };
 
   let audioEnabled = true;
@@ -850,14 +1068,14 @@
       const osc = audioContext.createOscillator();
       const gain = audioContext.createGain();
       osc.type = 'triangle';
-      osc.frequency.setValueAtTime(175, audioContext.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(32, audioContext.currentTime + 0.016);
-      gain.gain.setValueAtTime(0.07, audioContext.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.016);
+      osc.frequency.setValueAtTime(180, audioContext.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(34, audioContext.currentTime + 0.015);
+      gain.gain.setValueAtTime(0.08, audioContext.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.015);
       osc.connect(gain);
       gain.connect(audioContext.destination);
       osc.start();
-      osc.stop(audioContext.currentTime + 0.016);
+      osc.stop(audioContext.currentTime + 0.015);
     } catch(e) {}
   }
 
@@ -887,6 +1105,7 @@
     const d = new Date();
     d.setDate(d.getDate() + offsetDays);
     document.getElementById('datePicker').value = d.toISOString().split('T')[0];
+    updateQuickPills();
     onDateChanged();
   }
 
@@ -897,11 +1116,22 @@
     if (daysUntilSat === 0 && day !== 6) daysUntilSat = 7;
     d.setDate(d.getDate() + daysUntilSat);
     document.getElementById('datePicker').value = d.toISOString().split('T')[0];
+    updateQuickPills();
     onDateChanged();
+  }
+
+  function updateQuickPills() {
+    const pickerVal = document.getElementById('datePicker').value;
+    const today = new Date().toISOString().split('T')[0];
+    const tom = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+
+    document.getElementById('pillToday').classList.toggle('active', pickerVal === today);
+    document.getElementById('pillTomorrow').classList.toggle('active', pickerVal === tom);
   }
 
   function onDateChanged() {
     updateDateDisplay();
+    updateQuickPills();
     spinAllSequential();
   }
 
@@ -912,8 +1142,8 @@
 
     const isWeekend = (baseDate.getDay() === 0 || baseDate.getDay() === 6);
     document.getElementById('hinNote').textContent = isWeekend 
-      ? 'Weekend: Morning Video (9–10:15 AM) → Lunch Short (12:30–2:30 PM)' 
-      : 'Weekday: Evening Video (4–5:15 PM) → Night Short (5:30–7 PM)';
+      ? 'Weekend: 9–10:15 AM Video → 12:30–2:30 PM Short' 
+      : 'Weekday: 4–5:15 PM Video → 5:30–7 PM Short';
 
     const baseStr = formatDate(baseDate);
     const nextStr = formatDate(nextDate);
@@ -928,22 +1158,44 @@
   }
 
   /**
-   * Scrolls the 3-Row drum reel:
-   * Displays Upper (-15m), Center (Selected), and Lower (+15m) times symmetrically!
+   * Helper to get active pool for a key
    */
-  function scrollDrum(stripId, poolConfig, duration, tickCount) {
+  function getPoolFor(key) {
+    const baseDate = getTargetDate();
+    const isWeekend = (baseDate.getDay() === 0 || baseDate.getDay() === 6);
+
+    if (key === 'hinVideo') return isWeekend ? CONTINUOUS_POOLS.hinVideoWeekend : CONTINUOUS_POOLS.hinVideoWeekday;
+    if (key === 'hinShort') return isWeekend ? CONTINUOUS_POOLS.hinShortWeekend : CONTINUOUS_POOLS.hinShortWeekday;
+    if (key === 'engVideo') return CONTINUOUS_POOLS.engVideoUS;
+    if (key === 'engShort') return CONTINUOUS_POOLS.engShortUS;
+  }
+
+  /**
+   * Scrolls the 3-Row drum reel:
+   * Displays Upper (-15m), Center (Selected in Lens), and Lower (+15m) times symmetrically!
+   */
+  function scrollDrum(stripId, viewportId, key, duration, tickCount, explicitTargetIdx) {
     const strip = document.getElementById(stripId);
+    const viewport = document.getElementById(viewportId);
+    const poolConfig = getPoolFor(key);
     const { sequence, targetIndices } = poolConfig;
 
-    // Pick one valid center target index
-    const targetIdx = targetIndices[Math.floor(Math.random() * targetIndices.length)];
+    // Pick target index: either explicit or random from targetIndices
+    let targetIdx;
+    if (typeof explicitTargetIdx === 'number' && explicitTargetIdx >= 1 && explicitTargetIdx < sequence.length - 1) {
+      targetIdx = explicitTargetIdx;
+    } else {
+      targetIdx = targetIndices[Math.floor(Math.random() * targetIndices.length)];
+    }
+
+    activeWheelIndices[key] = targetIdx;
+
     const upperTime = sequence[targetIdx - 1];
     const centerTime = sequence[targetIdx];
     const lowerTime = sequence[targetIdx + 1];
 
-    // Build drum reel strip:
-    // Starts with random rolling sequence, and terminates cleanly with [upperTime, centerTime, lowerTime]
-    const randomCount = 16;
+    // Build rolling sequence of items
+    const randomCount = duration > 400 ? 16 : 4;
     const items = [];
     for (let i = 0; i < randomCount; i++) {
       items.push(sequence[Math.floor(Math.random() * sequence.length)]);
@@ -953,22 +1205,34 @@
     items.push(centerTime); // index: items.length - 2 (Center target!)
     items.push(lowerTime);  // index: items.length - 1
 
-    strip.innerHTML = items.map(t => `<div class="drum-cell">${t}</div>`).join('');
+    strip.innerHTML = items.map((t, idx) => {
+      let cellClass = 'drum-cell';
+      if (idx === items.length - 3) cellClass += ' cell-upper';
+      if (idx === items.length - 2) cellClass += ' cell-center';
+      if (idx === items.length - 1) cellClass += ' cell-lower';
+      return `<div class="${cellClass}" data-idx="${idx}">${t}</div>`;
+    }).join('');
 
-    // Reset translation instantly
+    // Instant reset
     strip.style.transition = 'none';
-    strip.style.transform = `translateY(40px)`;
+    strip.style.transform = `translateY(${ITEM_HEIGHT}px)`;
     void strip.offsetHeight; // force reflow
 
-    // To align centerTime (at index items.length - 2) with the center lens at y = 40px:
+    // Align center item at y = 42px inside 126px viewport
     const targetCenterIndex = items.length - 2;
-    const targetY = 40 - (targetCenterIndex * ITEM_HEIGHT);
+    const targetY = ITEM_HEIGHT - (targetCenterIndex * ITEM_HEIGHT);
 
     // Emil Kowalski spring friction curve
     strip.style.transition = `transform ${duration}ms cubic-bezier(0.12, 0.9, 0.22, 1.05)`;
     strip.style.transform = `translateY(${targetY}px)`;
 
     triggerDecelerationTicks(duration, tickCount);
+
+    // Subtle lens pulse on finish
+    setTimeout(() => {
+      viewport.classList.add('pulsing');
+      setTimeout(() => viewport.classList.remove('pulsing'), 250);
+    }, duration);
 
     return centerTime;
   }
@@ -987,25 +1251,91 @@
   }
 
   /**
-   * Row Spin: Video spins first, then Short spins strictly after
+   * Step a wheel up or down by 15 mins (for mousewheel, swipe, or click)
+   */
+  function nudgeWheel(key, delta) {
+    const poolConfig = getPoolFor(key);
+    const currentIdx = activeWheelIndices[key] || 2;
+    const newIdx = currentIdx + delta;
+
+    if (newIdx >= 1 && newIdx <= poolConfig.sequence.length - 2) {
+      playTickSound();
+      const stripId = `${key}Strip`;
+      const viewportId = `viewport${key.charAt(0).toUpperCase() + key.slice(1)}`;
+      currentTimes[key] = scrollDrum(stripId, viewportId, key, 320, 3, newIdx);
+    }
+  }
+
+  /**
+   * Attach Interactive Listeners (Mousewheel, Click, Touch Drag)
+   */
+  function setupInteractiveWheels() {
+    const wheels = [
+      { key: 'hinVideo', vpId: 'viewportHinVideo', stripId: 'hinVideoStrip' },
+      { key: 'hinShort', vpId: 'viewportHinShort', stripId: 'hinShortStrip' },
+      { key: 'engVideo', vpId: 'viewportEngVideo', stripId: 'engVideoStrip' },
+      { key: 'engShort', vpId: 'viewportEngShort', stripId: 'engShortStrip' }
+    ];
+
+    wheels.forEach(({ key, vpId }) => {
+      const vp = document.getElementById(vpId);
+      if (!vp) return;
+
+      // 1. Mouse wheel / trackpad scroll
+      let lastWheelTime = 0;
+      vp.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const now = Date.now();
+        if (now - lastWheelTime < 140) return;
+        lastWheelTime = now;
+        nudgeWheel(key, e.deltaY > 0 ? 1 : -1);
+      }, { passive: false });
+
+      // 2. Click upper (-15m), lower (+15m), or center (re-roll)
+      vp.addEventListener('click', (e) => {
+        const rect = vp.getBoundingClientRect();
+        const clickY = e.clientY - rect.top;
+        if (clickY < 42) {
+          nudgeWheel(key, -1); // Upper clicked: move back 15m
+        } else if (clickY > 84) {
+          nudgeWheel(key, 1);  // Lower clicked: move forward 15m
+        } else {
+          // Center clicked: random spin this wheel
+          playTickSound();
+          const stripId = `${key}Strip`;
+          currentTimes[key] = scrollDrum(stripId, vpId, key, 850, 10);
+        }
+      });
+
+      // 3. Touch Drag / Swipe for mobile
+      let touchStartY = 0;
+      vp.addEventListener('touchstart', (e) => {
+        touchStartY = e.touches[0].clientY;
+      }, { passive: true });
+
+      vp.addEventListener('touchend', (e) => {
+        const touchEndY = e.changedTouches[0].clientY;
+        const diff = touchStartY - touchEndY;
+        if (Math.abs(diff) > 20) {
+          nudgeWheel(key, diff > 0 ? 1 : -1);
+        }
+      }, { passive: true });
+    });
+  }
+
+  /**
+   * Row Spin
    */
   function spinRow(row) {
-    const baseDate = getTargetDate();
-    const isWeekend = (baseDate.getDay() === 0 || baseDate.getDay() === 6);
-
     if (row === 'hin') {
-      const vPool = isWeekend ? CONTINUOUS_POOLS.hinVideoWeekend : CONTINUOUS_POOLS.hinVideoWeekday;
-      const sPool = isWeekend ? CONTINUOUS_POOLS.hinShortWeekend : CONTINUOUS_POOLS.hinShortWeekday;
-
-      currentTimes.hinVideo = scrollDrum('hinVideoStrip', vPool, 1150, 14);
+      currentTimes.hinVideo = scrollDrum('hinVideoStrip', 'viewportHinVideo', 'hinVideo', 1150, 14);
       setTimeout(() => {
-        currentTimes.hinShort = scrollDrum('hinShortStrip', sPool, 1350, 16);
+        currentTimes.hinShort = scrollDrum('hinShortStrip', 'viewportHinShort', 'hinShort', 1350, 16);
       }, 260);
-
     } else if (row === 'eng') {
-      currentTimes.engVideo = scrollDrum('engVideoStrip', CONTINUOUS_POOLS.engVideoUS, 1150, 14);
+      currentTimes.engVideo = scrollDrum('engVideoStrip', 'viewportEngVideo', 'engVideo', 1150, 14);
       setTimeout(() => {
-        currentTimes.engShort = scrollDrum('engShortStrip', CONTINUOUS_POOLS.engShortUS, 1350, 16);
+        currentTimes.engShort = scrollDrum('engShortStrip', 'viewportEngShort', 'engShort', 1350, 16);
       }, 260);
     }
   }
@@ -1018,15 +1348,16 @@
     spinRow('hin');
     setTimeout(() => {
       spinRow('eng');
-    }, 400);
+    }, 380);
   }
 
   /**
-   * Copy Row Schedule
+   * Copy Row Schedule with Button Morphing
    */
-  function copyRowSchedule(channelName, vDateId, vTime, sDateId, sTime) {
+  function copyRowSchedule(channelName, vDateId, vTime, sDateId, sTime, btnId) {
     const vDate = document.getElementById(vDateId).textContent;
     const sDate = document.getElementById(sDateId).textContent;
+    const btn = document.getElementById(btnId);
 
     const copyText = 
 `${channelName} Schedule Plan:
@@ -1034,10 +1365,23 @@
 2. Short (Upload After): ${sDate} at ${sTime} IST`;
 
     navigator.clipboard.writeText(copyText).then(() => {
-      triggerSonnerToast(`Copied ${channelName} schedule!`);
+      triggerCopyFeedback(btn, `Copied ${channelName} schedule!`);
     }).catch(() => {
       fallbackCopy(copyText, `Copied ${channelName} schedule!`);
     });
+  }
+
+  function triggerCopyFeedback(btn, msg) {
+    if (btn) {
+      const originalHTML = btn.innerHTML;
+      btn.innerHTML = `✓ Copied!`;
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.innerHTML = originalHTML;
+        btn.classList.remove('copied');
+      }, 1800);
+    }
+    triggerSonnerToast(msg);
   }
 
   function copyAllSchedules() {
@@ -1089,7 +1433,7 @@ Target Base: ${baseStr}
     }, 2200);
   }
 
-  // Keyboard Shortcuts: R or Space = Spin All, C = Copy All
+  // Keyboard Shortcuts
   window.addEventListener('keydown', (e) => {
     if (document.activeElement.tagName === 'INPUT') return;
 
@@ -1106,6 +1450,8 @@ Target Base: ${baseStr}
   window.addEventListener('DOMContentLoaded', () => {
     getTargetDate();
     updateDateDisplay();
+    updateQuickPills();
+    setupInteractiveWheels();
     spinAllSequential();
   });
 </script>
