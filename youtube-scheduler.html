@@ -8,7 +8,7 @@
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Gujarati:wght@600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
   
   <style>
     /* -------------------------------------------------------------------------
@@ -135,6 +135,64 @@
         opacity: 1;
         transform: translateY(0) scale(1);
       }
+    }
+
+    /* -------------------------------------------------------------------------
+       BAPS Guru Parampara Divine Infinite Marquee
+       ------------------------------------------------------------------------- */
+    .divine-marquee-wrap {
+      width: 100%;
+      overflow: hidden;
+      background: rgba(255, 159, 10, 0.04);
+      border: 1px solid rgba(255, 159, 10, 0.16);
+      border-radius: 14px;
+      padding: 10px 0;
+      position: relative;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+      -webkit-mask-image: linear-gradient(90deg, transparent 0%, black 50px, black calc(100% - 50px), transparent 100%);
+      mask-image: linear-gradient(90deg, transparent 0%, black 50px, black calc(100% - 50px), transparent 100%);
+    }
+
+    .divine-marquee-content {
+      display: flex;
+      width: max-content;
+      animation: divineMarqueeScroll 32s linear infinite;
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      .divine-marquee-wrap:hover .divine-marquee-content {
+        animation-play-state: paused;
+      }
+    }
+
+    @keyframes divineMarqueeScroll {
+      from { transform: translateX(0); }
+      to { transform: translateX(-50%); }
+    }
+
+    .marquee-track {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding-right: 20px;
+      white-space: nowrap;
+    }
+
+    .marquee-item {
+      font-family: 'Noto Sans Gujarati', 'Plus Jakarta Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      color: #FFB74D;
+      letter-spacing: 0.02em;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      text-shadow: 0 0 12px rgba(255, 159, 10, 0.25);
+    }
+
+    .marquee-sep {
+      color: rgba(255, 183, 77, 0.35);
+      font-size: 11px;
     }
 
     /* -------------------------------------------------------------------------
@@ -614,7 +672,7 @@
       background: var(--drum-bg);
       border: 1px solid var(--drum-border);
       perspective: 500px;
-      cursor: ns-resize;
+      cursor: default;
       user-select: none;
       /* Smooth 3D Cylindrical Eased Fade Mask */
       -webkit-mask-image: linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.5) 18%, black 36%, black 64%, rgba(0,0,0,0.5) 82%, transparent 100%);
@@ -670,40 +728,24 @@
       transition: opacity 160ms var(--ease-out), transform 160ms var(--ease-out), color 160ms var(--ease-out);
     }
 
-    /* Wheel Interactive Slots */
+    /* Wheel Display Slots (Spin-Only, No Manual Edit) */
     .drum-cell.cell-upper {
       opacity: 0.36;
       transform: rotateX(24deg) scale(0.93);
-      cursor: pointer;
     }
 
     .drum-cell.cell-center {
       opacity: 1;
       transform: rotateX(0deg) scale(1.02);
       color: #FFFFFF;
-      cursor: pointer;
     }
 
     .drum-cell.cell-lower {
       opacity: 0.36;
       transform: rotateX(-24deg) scale(0.93);
-      cursor: pointer;
     }
 
-    .slot-hint-text {
-      font-size: 11px;
-      color: var(--text-tertiary);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 4px;
-    }
 
-    .slot-hint-text span {
-      display: inline-flex;
-      align-items: center;
-      gap: 3px;
-    }
 
     /* -------------------------------------------------------------------------
        Sonner Physics Toast Alert
@@ -736,33 +778,7 @@
       transform: translateX(-50%) translateY(0) scale(1);
     }
 
-    /* Shortcuts Footer */
-    .shortcuts-footer {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 16px;
-      font-size: 12px;
-      color: var(--text-tertiary);
-      padding-top: 6px;
-      flex-wrap: wrap;
-    }
 
-    .shortcuts-footer span {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .kbd-tag {
-      background: #13151D;
-      border: 1px solid var(--card-border);
-      color: var(--text-secondary);
-      font-family: 'JetBrains Mono', monospace;
-      padding: 1px 6px;
-      border-radius: 4px;
-      font-size: 11px;
-    }
 
     /* -------------------------------------------------------------------------
        Full Responsive Breakpoints (Mobile, Tablet, Desktop)
@@ -847,6 +863,45 @@
 
 <div class="container">
 
+  <!-- BAPS Swaminarayan Guru Parampara Infinite Marquee -->
+  <aside class="divine-marquee-wrap animate-entrance delay-1" aria-label="BAPS Swaminarayan Guru Parampara">
+    <div class="divine-marquee-content">
+      <div class="marquee-track">
+        <span class="marquee-item"><span class="sacred-flower">🌸</span> પરબ્રહ્મ ભગવાન શ્રીસ્વામિનારાયણ</span>
+        <span class="marquee-sep">✦</span>
+        <span class="marquee-item">અક્ષરબ્રહ્મ શ્રીગુણાતીતાનંદ સ્વામી</span>
+        <span class="marquee-sep">✦</span>
+        <span class="marquee-item">બ્રહ્મસ્વરૂપ શ્રીભગતજી મહારાજ</span>
+        <span class="marquee-sep">✦</span>
+        <span class="marquee-item">બ્રહ્મસ્વરૂપ શ્રીશાસ્ત્રીજી મહારાજ</span>
+        <span class="marquee-sep">✦</span>
+        <span class="marquee-item">બ્રહ્મસ્વરૂપ શ્રીયોગીજી મહારાજ</span>
+        <span class="marquee-sep">✦</span>
+        <span class="marquee-item">બ્રહ્મસ્વરૂપ શ્રીપ્રમુખસ્વામી મહારાજ</span>
+        <span class="marquee-sep">✦</span>
+        <span class="marquee-item">પ્રગટ બ્રહ્મસ્વરૂપ શ્રીમહંતસ્વામી મહારાજ</span>
+        <span class="marquee-sep">✦</span>
+      </div>
+      <!-- Cloned for seamless continuous infinite scroll -->
+      <div class="marquee-track" aria-hidden="true">
+        <span class="marquee-item"><span class="sacred-flower">🌸</span> પરબ્રહ્મ ભગવાન શ્રીસ્વામિનારાયણ</span>
+        <span class="marquee-sep">✦</span>
+        <span class="marquee-item">અક્ષરબ્રહ્મ શ્રીગુણાતીતાનંદ સ્વામી</span>
+        <span class="marquee-sep">✦</span>
+        <span class="marquee-item">બ્રહ્મસ્વરૂપ શ્રીભગતજી મહારાજ</span>
+        <span class="marquee-sep">✦</span>
+        <span class="marquee-item">બ્રહ્મસ્વરૂપ શ્રીશાસ્ત્રીજી મહારાજ</span>
+        <span class="marquee-sep">✦</span>
+        <span class="marquee-item">બ્રહ્મસ્વરૂપ શ્રીયોગીજી મહારાજ</span>
+        <span class="marquee-sep">✦</span>
+        <span class="marquee-item">બ્રહ્મસ્વરૂપ શ્રીપ્રમુખસ્વામી મહારાજ</span>
+        <span class="marquee-sep">✦</span>
+        <span class="marquee-item">પ્રગટ બ્રહ્મસ્વરૂપ શ્રીમહંતસ્વામી મહારાજ</span>
+        <span class="marquee-sep">✦</span>
+      </div>
+    </div>
+  </aside>
+
   <!-- Header & Toolbar -->
   <header class="animate-entrance delay-1">
     <div class="brand-section">
@@ -905,10 +960,6 @@
             <div class="drum-lens"></div>
             <div class="drum-strip" id="hinVideoStrip"></div>
           </div>
-          <div class="slot-hint-text">
-            <span>Scroll wheel or click upper/lower</span>
-            <span>15m grid</span>
-          </div>
         </article>
 
         <!-- Connector Arrow -->
@@ -926,10 +977,6 @@
           <div class="drum-viewport" id="viewportHinShort" aria-label="Hindi Short Time Reel">
             <div class="drum-lens"></div>
             <div class="drum-strip" id="hinShortStrip"></div>
-          </div>
-          <div class="slot-hint-text">
-            <span>Scroll wheel or click upper/lower</span>
-            <span>15m grid</span>
           </div>
         </article>
 
@@ -963,10 +1010,6 @@
             <div class="drum-lens"></div>
             <div class="drum-strip" id="engVideoStrip"></div>
           </div>
-          <div class="slot-hint-text">
-            <span>Scroll wheel or click upper/lower</span>
-            <span>15m grid</span>
-          </div>
         </article>
 
         <!-- Connector Arrow -->
@@ -988,25 +1031,12 @@
             <div class="drum-lens"></div>
             <div class="drum-strip" id="engShortStrip"></div>
           </div>
-          <div class="slot-hint-text">
-            <span>Scroll wheel or click upper/lower</span>
-            <span>15m grid</span>
-          </div>
         </article>
 
       </div>
     </section>
 
   </main>
-
-  <!-- Keyboard Shortcuts Footer -->
-  <footer class="shortcuts-footer" role="contentinfo">
-    <span>Press <span class="kbd-tag">R</span> or <span class="kbd-tag">Space</span> to spin</span>
-    <span>•</span>
-    <span>Press <span class="kbd-tag">C</span> to copy all schedules</span>
-    <span>•</span>
-    <span>Scroll wheel or swipe any drum</span>
-  </footer>
 
 </div>
 
@@ -1269,79 +1299,6 @@
   }
 
   /**
-   * Step a wheel up or down by 15 mins (for mousewheel, swipe, or click)
-   */
-  function nudgeWheel(key, delta) {
-    const poolConfig = getPoolFor(key);
-    const currentIdx = activeWheelIndices[key] || 2;
-    const newIdx = currentIdx + delta;
-
-    if (newIdx >= 1 && newIdx <= poolConfig.sequence.length - 2) {
-      playTickSound();
-      const stripId = `${key}Strip`;
-      const viewportId = `viewport${key.charAt(0).toUpperCase() + key.slice(1)}`;
-      currentTimes[key] = scrollDrum(stripId, viewportId, key, 320, 3, newIdx);
-    }
-  }
-
-  /**
-   * Attach Interactive Listeners (Mousewheel, Click, Touch Drag)
-   */
-  function setupInteractiveWheels() {
-    const wheels = [
-      { key: 'hinVideo', vpId: 'viewportHinVideo', stripId: 'hinVideoStrip' },
-      { key: 'hinShort', vpId: 'viewportHinShort', stripId: 'hinShortStrip' },
-      { key: 'engVideo', vpId: 'viewportEngVideo', stripId: 'engVideoStrip' },
-      { key: 'engShort', vpId: 'viewportEngShort', stripId: 'engShortStrip' }
-    ];
-
-    wheels.forEach(({ key, vpId }) => {
-      const vp = document.getElementById(vpId);
-      if (!vp) return;
-
-      // 1. Mouse wheel / trackpad scroll
-      let lastWheelTime = 0;
-      vp.addEventListener('wheel', (e) => {
-        e.preventDefault();
-        const now = Date.now();
-        if (now - lastWheelTime < 140) return;
-        lastWheelTime = now;
-        nudgeWheel(key, e.deltaY > 0 ? 1 : -1);
-      }, { passive: false });
-
-      // 2. Click upper (-15m), lower (+15m), or center (re-roll)
-      vp.addEventListener('click', (e) => {
-        const rect = vp.getBoundingClientRect();
-        const clickY = e.clientY - rect.top;
-        if (clickY < 42) {
-          nudgeWheel(key, -1); // Upper clicked: move back 15m
-        } else if (clickY > 84) {
-          nudgeWheel(key, 1);  // Lower clicked: move forward 15m
-        } else {
-          // Center clicked: random spin this wheel
-          playTickSound();
-          const stripId = `${key}Strip`;
-          currentTimes[key] = scrollDrum(stripId, vpId, key, 850, 10);
-        }
-      });
-
-      // 3. Touch Drag / Swipe for mobile
-      let touchStartY = 0;
-      vp.addEventListener('touchstart', (e) => {
-        touchStartY = e.touches[0].clientY;
-      }, { passive: true });
-
-      vp.addEventListener('touchend', (e) => {
-        const touchEndY = e.changedTouches[0].clientY;
-        const diff = touchStartY - touchEndY;
-        if (Math.abs(diff) > 20) {
-          nudgeWheel(key, diff > 0 ? 1 : -1);
-        }
-      }, { passive: true });
-    });
-  }
-
-  /**
    * Row Spin
    */
   function spinRow(row) {
@@ -1483,7 +1440,6 @@ Target Base: ${baseStr}
     getTargetDate();
     updateDateDisplay();
     updateQuickPills();
-    setupInteractiveWheels();
     spinAllSequential();
   });
 </script>
