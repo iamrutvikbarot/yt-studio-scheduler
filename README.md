@@ -2,6 +2,11 @@
 
 An Apple & Vercel-inspired batch upload time picker designed for YouTube creators publishing long-form videos and Shorts. Built adhering to the design engineering guidelines of **[emilkowalski/skills](https://github.com/emilkowalski/skills)** and **[vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills)**.
 
+**Live URLs:**
+- 🌐 **[https://ytbesttime.vercel.app](https://ytbesttime.vercel.app)** (Primary)
+- 🌐 **[https://yt-besttime.vercel.app](https://yt-besttime.vercel.app)** (Alternate)
+- 🌐 **[https://yt-studio-scheduler.vercel.app](https://yt-studio-scheduler.vercel.app)**
+
 ![OLED Dark Mode](https://img.shields.io/badge/Theme-OLED%20Dark-black?style=flat-square)
 ![15-Min Grid](https://img.shields.io/badge/Intervals-15--Minute%20Grid-0070F3?style=flat-square)
 ![Vercel Ready](https://img.shields.io/badge/Deploy-Vercel-black?style=flat-square&logo=vercel)
