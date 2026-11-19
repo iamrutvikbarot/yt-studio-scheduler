@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="en" style="color-scheme: dark;">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <title>YouTube Studio Batch Scheduler — 15-Minute Grid</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    /* -------------------------------------------------------------------------
+       Vercel Design System & Emil Kowalski Motion Tokens
+       ------------------------------------------------------------------------- */
+    :root {
+      --bg: #000000;
+      --card-bg: #0A0A0A;
+      --card-border: rgba(255, 255, 255, 0.09);
+      --card-border-hover: rgba(255, 255, 255, 0.18);
+      
+      --row-bg: #0D0D0E;
+      --row-border: rgba(255, 255, 255, 0.07);
+      --row-border-hover: rgba(255, 255, 255, 0.15);
+      
+      --slot-bg: #141416;
+      --slot-border: rgba(255, 255, 255, 0.08);
+      
+      --text-primary: #EDEDED;
+      --text-secondary: #A1A1AA;
+      --text-tertiary: #71717A;
+      --text-muted: #52525B;
+      
+      --blue: #0070F3;
+      --blue-glow: rgba(0, 112, 243, 0.28);
+      
+      --red: #FF453A;
+      --red-bg: rgba(255, 69, 58, 0.12);
+      --red-border: rgba(255, 69, 58, 0.25);
+      
+      --green: #30D158;
+      --green-bg: rgba(48, 209, 88, 0.12);
+      --green-border: rgba(48, 209, 88, 0.25);
+      
+      --amber: #F5A623;
+      --amber-bg: rgba(245, 166, 35, 0.12);
+      --amber-border: rgba(245, 166, 35, 0.25);
+      
+      --purple: #BF5AF2;
+      --purple-bg: rgba(191, 90, 242, 0.12);
+      --purple-border: rgba(191, 90, 242, 0.25);
+      
+      /* Emil Kowalski Animation Easing Curves */
+      --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+      --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+      --ease-spring: cubic-bezier(0.12, 0.9, 0.22, 1.05);
+      --ease-snappy: cubic-bezier(0.2, 0.8, 0.2, 1);
+      
+      --item-height: 48px;
+      --wheel-height: 112px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text-primary);
+      font-family: 'Geist', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: clamp(16px, 3.5vw, 40px);
+      padding-top: max(clamp(16px, 3.5vw, 40px), env(safe-area-inset-top));
+      padding-bottom: max(clamp(20px, 4vw, 48px), env(safe-area-inset-bottom));
+      width: 100%;
+      position: relative;
+      overflow-x: hidden;
+      touch-action: manipulation;
+    }
+
+    /* Ambient Vercel Background Grid Light */
+    body::before {
+      content: '';
+      position: absolute;
+      top: -200px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 1000px;
+      height: 450px;
+      background: radial-gradient(50% 50% at 50% 50%, rgba(0, 112, 243, 0.08) 0%, transparent 100%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      width: 100%;
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* -------------------------------------------------------------------------
+       Top Navigation & Control Bar (Vercel Style)
+       ------------------------------------------------------------------------- */
+    header {
+      width: 100%;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 18px 24px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .brand-section {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .brand-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 10px var(--green);
+    }
+
+    h1 {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      color: #FFF;
+      text-wrap: balance;
+    }
+
+    .deck {
+      font-size: 13px;
+      color: var(--text-secondary);
+      letter-spacing: -0.01em;
+    }
+
+    .controls-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .date-label {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    input[type="date"] {
+      background: #141416;
+      border: 1px solid var(--card-border);
+      color: #FFF;
+      padding: 9px 13px;
+      border-radius: 10px;
+      font-family: 'Geist Mono', monospace;
+      font-size: 13px;
+      font-weight: 600;
+      color-scheme: dark;
+      cursor: pointer;
+      outline: none;
+      transition: border-color 150ms var(--ease-out), box-shadow 150ms var(--ease-out);
+    }
+
+    input[type="date"]:focus-visible {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 2px var(--blue-glow);
+    }
+
+    /* Icon Buttons */
+    .btn-icon {
+      background: #141416;
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      width: 40px;
+      height: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--text-secondary);
+      font-size: 15px;
+      transition: background 150ms var(--ease-out), color 150ms var(--ease-out), border-color 150ms var(--ease-out), transform 120ms var(--ease-out);
+    }
+
+    .btn-icon:hover {
+      background: #1E1E22;
+      color: #FFF;
+      border-color: var(--card-border-hover);
+    }
+
+    .btn-icon:active {
+      transform: scale(0.97);
+    }
+
+    .btn-icon:focus-visible {
+      outline: 2px solid var(--blue);
+      outline-offset: 2px;
+    }
+
+    .btn-icon.muted {
+      opacity: 0.35;
+    }
+
+    /* Primary Spin Button */
+    .btn-spin-all {
+      background: #FFFFFF;
+      color: #000000;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 18px;
+      font-size: 13.5px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      box-shadow: 0 2px 10px rgba(255, 255, 255, 0.15);
+      transition: background 150ms var(--ease-out), transform 120ms var(--ease-out), box-shadow 150ms var(--ease-out);
+    }
+
+    .btn-spin-all:hover {
+      background: #EDEDED;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(255, 255, 255, 0.22);
+    }
+
+    .btn-spin-all:active {
+      transform: scale(0.97);
+    }
+
+    .btn-spin-all:focus-visible {
+      outline: 2px solid var(--blue);
+      outline-offset: 2px;
+    }
+
+    kbd {
+      font-family: 'Geist Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      background: rgba(0, 0, 0, 0.1);
+      border: 1px solid rgba(0, 0, 0, 0.15);
+      padding: 1px 5px;
+      border-radius: 4px;
+      margin-left: 2px;
+    }
+
+    /* -------------------------------------------------------------------------
+       Full-Width 2 Rows
+       ------------------------------------------------------------------------- */
+    .schedule-stack {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .schedule-row {
+      width: 100%;
+      background: var(--row-bg);
+      border: 1px solid var(--row-border);
+      border-radius: 18px;
+      padding: 22px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      transition: border-color 200ms var(--ease-out), box-shadow 200ms var(--ease-out);
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      .schedule-row:hover {
+        border-color: var(--row-border-hover);
+        box-shadow: 0 10px 32px rgba(0, 0, 0, 0.45);
+      }
+    }
+
+    .row-meta-col {
+      min-width: 220px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .row-tag {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 3px 9px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      width: fit-content;
+      margin-bottom: 2px;
+    }
+    .tag-hin { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+    .tag-eng { background: rgba(0, 112, 243, 0.12); color: #3291FF; border: 1px solid rgba(0, 112, 243, 0.25); }
+
+    .row-heading {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #FFF;
+    }
+
+    .row-sub {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      letter-spacing: -0.01em;
+    }
+
+    /* Slots Container */
+    .slots-sequence-wrap {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex: 1;
+      justify-content: space-evenly;
+    }
+
+    .step-arrow {
+      color: var(--text-muted);
+      font-size: 18px;
+      font-weight: 600;
+      user-select: none;
+      transition: transform 200ms var(--ease-out), color 200ms var(--ease-out);
+    }
+
+    .slot-card {
+      background: var(--slot-bg);
+      border: 1px solid var(--slot-border);
+      border-radius: 14px;
+      padding: 14px 18px 12px;
+      flex: 1;
+      max-width: 390px;
+      min-width: 240px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 4px 12px rgba(0, 0, 0, 0.3);
+      position: relative;
+      transition: border-color 150ms var(--ease-out);
+    }
+
+    .slot-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .step-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+    .badge-video { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+    .badge-short { background: var(--purple-bg); color: var(--purple); border: 1px solid var(--purple-border); }
+
+    .slot-date {
+      font-family: 'Geist Mono', monospace;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      font-variant-numeric: tabular-nums;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .badge-rollover {
+      background: var(--amber-bg);
+      color: var(--amber);
+      border: 1px solid var(--amber-border);
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 4px;
+      letter-spacing: 0.02em;
+    }
+
+    /* -------------------------------------------------------------------------
+       iPhone Drum Reel Time Wheel (Emil Kowalski Physics)
+       ------------------------------------------------------------------------- */
+    .drum-viewport {
+      height: var(--wheel-height);
+      position: relative;
+      overflow: hidden;
+      border-radius: 10px;
+      background: #0B0B0C;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      /* Eased Cylindrical Gradient Mask */
+      -webkit-mask-image: linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.4) 15%, black 35%, black 65%, rgba(0,0,0,0.4) 85%, transparent 100%);
+      mask-image: linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.4) 15%, black 35%, black 65%, rgba(0,0,0,0.4) 85%, transparent 100%);
+    }
+
+    /* Floating Center Glass Lens */
+    .drum-lens {
+      position: absolute;
+      top: 50%;
+      left: 6px;
+      right: 6px;
+      height: var(--item-height);
+      transform: translateY(-50%);
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 8px;
+      pointer-events: none;
+      box-shadow: inset 0 0 12px rgba(255, 255, 255, 0.02), 0 4px 16px rgba(0, 0, 0, 0.5);
+      z-index: 2;
+    }
+
+    .drum-strip {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 3;
+      will-change: transform;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .drum-cell {
+      height: var(--item-height);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Geist Mono', monospace;
+      font-size: 21px;
+      font-weight: 700;
+      color: #FFFFFF;
+      letter-spacing: -0.025em;
+      font-variant-numeric: tabular-nums;
+      user-select: none;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+    }
+
+    /* Row Action Buttons */
+    .row-actions-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 140px;
+      justify-content: flex-end;
+    }
+
+    .btn-row-spin {
+      background: #141416;
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      width: 42px;
+      height: 42px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--text-secondary);
+      font-size: 16px;
+      transition: background 150ms var(--ease-out), color 150ms var(--ease-out), transform 150ms var(--ease-out);
+    }
+
+    .btn-row-spin:hover {
+      background: #1E1E22;
+      color: #FFF;
+      transform: rotate(35deg);
+    }
+
+    .btn-row-spin:active {
+      transform: scale(0.95);
+    }
+
+    .btn-copy-schedule {
+      background: #FFFFFF;
+      color: #000000;
+      border: none;
+      border-radius: 10px;
+      padding: 11px 18px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 150ms var(--ease-out), transform 120ms var(--ease-out), box-shadow 150ms var(--ease-out);
+      box-shadow: 0 2px 8px rgba(255, 255, 255, 0.12);
+    }
+
+    .btn-copy-schedule:hover {
+      background: #EDEDED;
+      transform: translateY(-1px);
+    }
+
+    .btn-copy-schedule:active {
+      transform: scale(0.97);
+    }
+
+    .btn-copy-schedule:focus-visible {
+      outline: 2px solid var(--blue);
+      outline-offset: 2px;
+    }
+
+    /* -------------------------------------------------------------------------
+       Sonner-Style Physics Toast (Emil Kowalski)
+       ------------------------------------------------------------------------- */
+    .sonner-toast {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%) translateY(40px) scale(0.95);
+      background: #18181B;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #FFFFFF;
+      padding: 12px 24px;
+      border-radius: 9999px;
+      font-size: 13.5px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      opacity: 0;
+      pointer-events: none;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.7);
+      transition: transform 220ms var(--ease-out-expo), opacity 200ms var(--ease-out);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sonner-toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0) scale(1);
+    }
+
+    /* Keyboard Shortcuts Footer Note */
+    .shortcuts-footer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      font-size: 12px;
+      color: var(--text-tertiary);
+      padding-top: 6px;
+    }
+
+    .shortcuts-footer span {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .kbd-tag {
+      background: #141416;
+      border: 1px solid var(--card-border);
+      color: var(--text-secondary);
+      font-family: 'Geist Mono', monospace;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+
+    /* -------------------------------------------------------------------------
+       Reduced Motion & Responsive Support
+       ------------------------------------------------------------------------- */
+    @media (prefers-reduced-motion: reduce) {
+      .drum-strip {
+        transition: opacity 150ms ease !important;
+      }
+      .btn-spin-all, .btn-icon, .btn-row-spin, .btn-copy-schedule {
+        transition: none !important;
+        transform: none !important;
+      }
+    }
+
+    @media (max-width: 960px) {
+      .schedule-row {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .slots-sequence-wrap {
+        flex-direction: column;
+      }
+      .step-arrow {
+        transform: rotate(90deg);
+      }
+      .slot-card {
+        max-width: 100%;
+        width: 100%;
+      }
+      .row-actions-group {
+        justify-content: flex-end;
+      }
+      .shortcuts-footer {
+        flex-direction: column;
+        gap: 6px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- Top Navigation & Control Bar -->
+  <header>
+    <div class="brand-section">
+      <div class="brand-row">
+        <span class="status-dot" aria-hidden="true"></span>
+        <h1>YouTube Studio Scheduler</h1>
+      </div>
+      <p class="deck">15-minute intervals · Video First → Shorts Second · Automatic US Date Rollover</p>
+    </div>
+
+    <div class="controls-group">
+      <label class="date-label" for="datePicker">
+        <input type="date" id="datePicker" onchange="onDateChanged()" aria-label="Upload Target Date">
+      </label>
+      
+      <button class="btn-icon" id="audioToggleBtn" title="Toggle Wheel Haptic Audio" onclick="toggleAudio()" aria-label="Toggle Audio">
+        🔊
+      </button>
+
+      <button class="btn-spin-all" onclick="spinAllSequential()" aria-label="Spin All Slots">
+        <span>🎲</span> Spin All <kbd>R</kbd>
+      </button>
+    </div>
+  </header>
+
+  <!-- 2 Full-Width Schedule Rows -->
+  <main class="schedule-stack">
+
+    <!-- ROW 1: Hindi & Gujarati -->
+    <section class="schedule-row" aria-labelledby="hinRowHeading">
+      <div class="row-meta-col">
+        <span class="row-tag tag-hin">Row 1</span>
+        <h2 class="row-heading" id="hinRowHeading">Hindi &amp; Gujarati</h2>
+        <p class="row-sub" id="hinNote">Video first, then Shorts after</p>
+      </div>
+
+      <div class="slots-sequence-wrap">
+        
+        <!-- STEP 1: Video First -->
+        <article class="slot-card">
+          <div class="slot-header">
+            <span class="step-badge badge-video">1️⃣ Video (Upload First)</span>
+            <time class="slot-date" id="hinVideoDateText">--</time>
+          </div>
+          <div class="drum-viewport" aria-label="Hindi Video Time Reel">
+            <div class="drum-lens"></div>
+            <div class="drum-strip" id="hinVideoStrip"></div>
+          </div>
+        </article>
+
+        <div class="step-arrow" aria-hidden="true">→</div>
+
+        <!-- STEP 2: Short Second -->
+        <article class="slot-card">
+          <div class="slot-header">
+            <span class="step-badge badge-short">2️⃣ Short (Upload After)</span>
+            <time class="slot-date" id="hinShortDateText">--</time>
+          </div>
+          <div class="drum-viewport" aria-label="Hindi Short Time Reel">
+            <div class="drum-lens"></div>
+            <div class="drum-strip" id="hinShortStrip"></div>
+          </div>
+        </article>
+
+      </div>
+
+      <div class="row-actions-group">
+        <button class="btn-row-spin" title="Spin Hindi & Gujarati" onclick="spinRow('hin')" aria-label="Spin Hindi Row">
+          🔄
+        </button>
+        <button class="btn-copy-schedule" onclick="copyRowSchedule('Hindi & Gujarati', 'hinVideoDateText', currentTimes.hinVideo, 'hinShortDateText', currentTimes.hinShort)">
+          📋 Copy
+        </button>
+      </div>
+    </section>
+
+    <!-- ROW 2: English (US Direct Focus) -->
+    <section class="schedule-row" aria-labelledby="engRowHeading">
+      <div class="row-meta-col">
+        <span class="row-tag tag-eng">Row 2</span>
+        <h2 class="row-heading" id="engRowHeading">English</h2>
+        <p class="row-sub">US Afternoon target · Date rolls +1 Day in Studio</p>
+      </div>
+
+      <div class="slots-sequence-wrap">
+        
+        <!-- STEP 1: Video First (Rolled Over Date) -->
+        <article class="slot-card">
+          <div class="slot-header">
+            <span class="step-badge badge-video">1️⃣ Video (Upload First)</span>
+            <time class="slot-date">
+              <span id="engVideoDateText">--</span>
+              <span class="badge-rollover">+1 Day</span>
+            </time>
+          </div>
+          <div class="drum-viewport" aria-label="English Video Time Reel">
+            <div class="drum-lens"></div>
+            <div class="drum-strip" id="engVideoStrip"></div>
+          </div>
+        </article>
+
+        <div class="step-arrow" aria-hidden="true">→</div>
+
+        <!-- STEP 2: Short Second (Rolled Over Date) -->
+        <article class="slot-card">
+          <div class="slot-header">
+            <span class="step-badge badge-short">2️⃣ Short (Upload After)</span>
+            <time class="slot-date">
+              <span id="engShortDateText">--</span>
+              <span class="badge-rollover">+1 Day</span>
+            </time>
+          </div>
+          <div class="drum-viewport" aria-label="English Short Time Reel">
+            <div class="drum-lens"></div>
+            <div class="drum-strip" id="engShortStrip"></div>
+          </div>
+        </article>
+
+      </div>
+
+      <div class="row-actions-group">
+        <button class="btn-row-spin" title="Spin English" onclick="spinRow('eng')" aria-label="Spin English Row">
+          🔄
+        </button>
+        <button class="btn-copy-schedule" onclick="copyRowSchedule('English', 'engVideoDateText', currentTimes.engVideo, 'engShortDateText', currentTimes.engShort)">
+          📋 Copy
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Keyboard Shortcuts Footer -->
+  <footer class="shortcuts-footer" role="contentinfo">
+    <span>Press <span class="kbd-tag">R</span> or <span class="kbd-tag">Space</span> to spin</span>
+    <span>•</span>
+    <span>Press <span class="kbd-tag">C</span> to copy all schedules</span>
+    <span>•</span>
+    <span>Strict 15-min YouTube Studio intervals</span>
+  </footer>
+
+</div>
+
+<!-- Sonner Toast Component -->
+<div class="sonner-toast" id="sonnerToast" role="status" aria-live="polite">
+  <span style="color: var(--green);">✓</span> <span id="toastMessage">Copied to clipboard</span>
+</div>
+
+<script>
+  /**
+   * 15-Minute Slot Pools adhering strictly to "best Time.html"
+   * Guaranteed: Video is always earlier, and Short is always after.
+   */
+  const POOLS = {
+    // Weekday Hindi Video: 4:00 PM – 5:15 PM IST
+    hinVideoWeekday: ['04:00 PM', '04:15 PM', '04:30 PM', '04:45 PM', '05:00 PM', '05:15 PM'],
+    // Weekday Hindi Short: 5:30 PM – 7:00 PM IST (strictly after Video)
+    hinShortWeekday: ['05:30 PM', '05:45 PM', '06:00 PM', '06:15 PM', '06:30 PM', '06:45 PM', '07:00 PM'],
+
+    // Weekend Hindi Video: 9:00 AM – 10:15 AM IST
+    hinVideoWeekend: ['09:00 AM', '09:15 AM', '09:30 AM', '09:45 AM', '10:00 AM', '10:15 AM'],
+    // Weekend Hindi Short: 12:30 PM – 2:30 PM IST (lunch peak, strictly after morning Video)
+    hinShortWeekend: ['12:30 PM', '12:45 PM', '01:00 PM', '01:15 PM', '01:30 PM', '01:45 PM', '02:00 PM', '02:15 PM', '02:30 PM'],
+
+    // English Video (US afternoon 2:00-3:00 PM EST = 12:30 AM - 1:30 AM IST NEXT DAY)
+    engVideoUS: ['12:30 AM', '12:45 AM', '01:00 AM', '01:15 AM', '01:30 AM'],
+    // English Short (Strictly after Video: 1:45 AM - 2:45 AM IST NEXT DAY)
+    engShortUS: ['01:45 AM', '02:00 AM', '02:15 AM', '02:30 AM', '02:45 AM']
+  };
+
+  const ITEM_HEIGHT = 48; // px
+  const CENTER_OFFSET = 32; // (wheel-height 112 - item-height 48) / 2 = 32px
+
+  let currentTimes = {
+    hinVideo: '',
+    hinShort: '',
+    engVideo: '',
+    engShort: ''
+  };
+
+  let audioEnabled = true;
+  let audioContext = null;
+
+  // Emil Kowalski Web Audio Synthesizer (Mechanical Haptic Wheel Tick)
+  function playTickSound() {
+    if (!audioEnabled) return;
+    try {
+      if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioContext.state === 'suspended') audioContext.resume();
+      
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(175, audioContext.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(32, audioContext.currentTime + 0.016);
+      gain.gain.setValueAtTime(0.07, audioContext.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.016);
+      osc.connect(gain);
+      gain.connect(audioContext.destination);
+      osc.start();
+      osc.stop(audioContext.currentTime + 0.016);
+    } catch(e) {}
+  }
+
+  function toggleAudio() {
+    audioEnabled = !audioEnabled;
+    const btn = document.getElementById('audioToggleBtn');
+    btn.textContent = audioEnabled ? '🔊' : '🔇';
+    btn.classList.toggle('muted', !audioEnabled);
+  }
+
+  function formatDate(d) {
+    return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  }
+
+  function getTargetDate() {
+    const val = document.getElementById('datePicker').value;
+    if (val) {
+      const [y, m, d] = val.split('-');
+      return new Date(y, m - 1, d);
+    }
+    const today = new Date();
+    document.getElementById('datePicker').value = today.toISOString().split('T')[0];
+    return today;
+  }
+
+  function onDateChanged() {
+    updateDateDisplay();
+    spinAllSequential();
+  }
+
+  function updateDateDisplay() {
+    const baseDate = getTargetDate();
+    const nextDate = new Date(baseDate);
+    nextDate.setDate(nextDate.getDate() + 1);
+
+    const isWeekend = (baseDate.getDay() === 0 || baseDate.getDay() === 6);
+    document.getElementById('hinNote').textContent = isWeekend 
+      ? 'Weekend: Morning Video (9–10 AM) → Lunch Short (12:30–2:30 PM)' 
+      : 'Weekday: Evening Video (4–5 PM) → Night Short (5:30–7 PM)';
+
+    const baseStr = formatDate(baseDate);
+    const nextStr = formatDate(nextDate);
+
+    // Hindi dates (Same day)
+    document.getElementById('hinVideoDateText').textContent = baseStr;
+    document.getElementById('hinShortDateText').textContent = baseStr;
+
+    // English dates (Rolled over +1 day for US midnight slots)
+    document.getElementById('engVideoDateText').textContent = nextStr;
+    document.getElementById('engShortDateText').textContent = nextStr;
+  }
+
+  /**
+   * iPhone Drum Reel Rolling Motion
+   */
+  function scrollDrum(stripId, pool, duration, tickCount) {
+    const strip = document.getElementById(stripId);
+    const chosenTime = pool[Math.floor(Math.random() * pool.length)];
+
+    // Create random items sequence ending on chosenTime
+    const count = 16;
+    const items = [];
+    for (let i = 0; i < count - 1; i++) {
+      items.push(pool[Math.floor(Math.random() * pool.length)]);
+    }
+    items.push(chosenTime);
+
+    strip.innerHTML = items.map(t => `<div class="drum-cell">${t}</div>`).join('');
+
+    // Reset without transition
+    strip.style.transition = 'none';
+    strip.style.transform = `translateY(${CENTER_OFFSET}px)`;
+    void strip.offsetHeight; // force layout repaint
+
+    // Momentum friction spring ease-out to target cell
+    const targetY = -((items.length - 1) * ITEM_HEIGHT) + CENTER_OFFSET;
+    strip.style.transition = `transform ${duration}ms cubic-bezier(0.12, 0.9, 0.22, 1.05)`;
+    strip.style.transform = `translateY(${targetY}px)`;
+
+    triggerDecelerationTicks(duration, tickCount);
+
+    return chosenTime;
+  }
+
+  function triggerDecelerationTicks(duration, count) {
+    if (!audioEnabled) return;
+    let accumulated = 0;
+    for (let i = 0; i < count; i++) {
+      const progress = i / count;
+      const delay = 35 + Math.pow(progress, 2.7) * (duration / count * 3);
+      accumulated += delay;
+      if (accumulated < duration) {
+        setTimeout(playTickSound, accumulated);
+      }
+    }
+  }
+
+  /**
+   * Row Spin: Video spins first, then Short spins strictly after
+   */
+  function spinRow(row) {
+    const baseDate = getTargetDate();
+    const isWeekend = (baseDate.getDay() === 0 || baseDate.getDay() === 6);
+
+    if (row === 'hin') {
+      const vPool = isWeekend ? POOLS.hinVideoWeekend : POOLS.hinVideoWeekday;
+      const sPool = isWeekend ? POOLS.hinShortWeekend : POOLS.hinShortWeekday;
+
+      currentTimes.hinVideo = scrollDrum('hinVideoStrip', vPool, 1200, 14);
+      setTimeout(() => {
+        currentTimes.hinShort = scrollDrum('hinShortStrip', sPool, 1400, 16);
+      }, 280);
+
+    } else if (row === 'eng') {
+      currentTimes.engVideo = scrollDrum('engVideoStrip', POOLS.engVideoUS, 1200, 14);
+      setTimeout(() => {
+        currentTimes.engShort = scrollDrum('engShortStrip', POOLS.engShortUS, 1400, 16);
+      }, 280);
+    }
+  }
+
+  /**
+   * Master Spin All (Staggered sequence across both rows)
+   */
+  function spinAllSequential() {
+    updateDateDisplay();
+    spinRow('hin');
+    setTimeout(() => {
+      spinRow('eng');
+    }, 420);
+  }
+
+  /**
+   * Copy Row Schedule
+   */
+  function copyRowSchedule(channelName, vDateId, vTime, sDateId, sTime) {
+    const vDate = document.getElementById(vDateId).textContent;
+    const sDate = document.getElementById(sDateId).textContent;
+
+    const copyText = 
+`${channelName} Schedule Plan:
+1. Video (Upload First): ${vDate} at ${vTime} IST
+2. Short (Upload After): ${sDate} at ${sTime} IST`;
+
+    navigator.clipboard.writeText(copyText).then(() => {
+      triggerSonnerToast(`Copied ${channelName} schedule!`);
+    }).catch(() => {
+      fallbackCopy(copyText, `Copied ${channelName} schedule!`);
+    });
+  }
+
+  function copyAllSchedules() {
+    const baseDate = getTargetDate();
+    const nextDate = new Date(baseDate);
+    nextDate.setDate(nextDate.getDate() + 1);
+
+    const baseStr = formatDate(baseDate);
+    const nextStr = formatDate(nextDate);
+
+    const copyText = 
+`==============================================
+📅 YOUTUBE STUDIO BATCH SCHEDULE
+Target Base: ${baseStr}
+==============================================
+[Hindi & Gujarati]
+1. Video (Upload First): ${baseStr} at ${currentTimes.hinVideo} IST
+2. Short (Upload After): ${baseStr} at ${currentTimes.hinShort} IST
+
+[English - US Focus]
+1. Video (Upload First): ${nextStr} (+1 Day) at ${currentTimes.engVideo} IST
+2. Short (Upload After): ${nextStr} (+1 Day) at ${currentTimes.engShort} IST
+==============================================`;
+
+    navigator.clipboard.writeText(copyText).then(() => {
+      triggerSonnerToast('Copied all channel schedules!');
+    }).catch(() => {
+      fallbackCopy(copyText, 'Copied all channel schedules!');
+    });
+  }
+
+  function fallbackCopy(text, toastMsg) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    triggerSonnerToast(toastMsg);
+  }
+
+  function triggerSonnerToast(msg) {
+    const toast = document.getElementById('sonnerToast');
+    document.getElementById('toastMessage').textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(window._sonnerTimer);
+    window._sonnerTimer = setTimeout(() => {
+      toast.classList.remove('show');
+    }, 2200);
+  }
+
+  // Keyboard Shortcuts: R or Space = Spin All, C = Copy All
+  window.addEventListener('keydown', (e) => {
+    // Avoid triggering when focused on date input
+    if (document.activeElement.tagName === 'INPUT') return;
+
+    if (e.key === 'r' || e.key === 'R' || e.code === 'Space') {
+      e.preventDefault();
+      spinAllSequential();
+    } else if (e.key === 'c' || e.key === 'C') {
+      e.preventDefault();
+      copyAllSchedules();
+    }
+  });
+
+  // Init on DOM load
+  window.addEventListener('DOMContentLoaded', () => {
+    getTargetDate();
+    updateDateDisplay();
+    spinAllSequential();
+  });
+</script>
+
+</body>
+</html>
