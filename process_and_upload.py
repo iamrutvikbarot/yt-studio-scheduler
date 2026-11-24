@@ -41,16 +41,12 @@ TZ_OFFSET_HOURS = float(os.getenv("TIMEZONE_OFFSET_HOURS", "5.5"))
 # 1. FILE DOWNLOAD HELPER (GOOGLE DRIVE & DIRECT LINKS)
 # ==============================================================================
 def download_media(url, output_path):
-    """
-    Downloads media from Google Drive or direct HTTP/HTTPS URL.
-    """
     if not url or not str(url).strip():
         return None
 
     clean_url = str(url).strip()
     print(f"📥 Downloading: {clean_url} -> {output_path}")
 
-    # If Google Drive link, use gdown for resilient downloading
     if "drive.google.com" in clean_url:
         try:
             gdown.download(clean_url, output_path, quiet=False, fuzzy=True)
@@ -59,7 +55,6 @@ def download_media(url, output_path):
         except Exception as e:
             print(f"⚠️ gdown failed, attempting direct download: {e}")
 
-    # Standard HTTP download fallback
     response = requests.get(clean_url, stream=True, timeout=120)
     response.raise_for_status()
     with open(output_path, "wb") as f:
@@ -76,7 +71,6 @@ def download_media(url, output_path):
 # 2. AUDIO MIXING & FFmpeg ENGINE
 # ==============================================================================
 def has_audio_stream(video_path):
-    """Checks if video contains an audio track."""
     cmd = [
         "ffprobe", "-v", "error",
         "-select_streams", "a",
@@ -91,12 +85,6 @@ def has_audio_stream(video_path):
         return False
 
 def merge_audio_and_video(video_path, audio_path, output_path, music_volume=0.25):
-    """
-    Combines video and music using FFmpeg.
-    - If video has voice/audio: mixes voice (1.0) and music (music_volume).
-    - If video has no audio: attaches music at 1.0 volume.
-    - Trims audio to match video length.
-    """
     if not audio_path or not os.path.exists(audio_path):
         return video_path
 
@@ -104,7 +92,6 @@ def merge_audio_and_video(video_path, audio_path, output_path, music_volume=0.25
     video_has_audio = has_audio_stream(video_path)
 
     if video_has_audio:
-        # Mix original audio with background music
         filter_str = (
             f"[0:a]volume=1.0[v_voice];"
             f"[1:a]volume={music_volume}[v_music];"
@@ -124,7 +111,6 @@ def merge_audio_and_video(video_path, audio_path, output_path, music_volume=0.25
             output_path
         ]
     else:
-        # Video is silent: replace audio stream with music
         cmd = [
             "ffmpeg", "-y",
             "-i", video_path,
@@ -161,9 +147,6 @@ def get_youtube_client():
     return build("youtube", "v3", credentials=creds)
 
 def upload_to_youtube(video_path, title, description, tags, target_utc_dt=None):
-    """
-    Uploads video as YouTube Short. If target_utc_dt is provided and in future, schedules it.
-    """
     if not YT_REFRESH_TOKEN or not YT_CLIENT_ID:
         print("⚠️ YouTube credentials not set. Skipping YouTube upload.")
         return None
@@ -171,10 +154,7 @@ def upload_to_youtube(video_path, title, description, tags, target_utc_dt=None):
     youtube = get_youtube_client()
     now_utc = datetime.datetime.now(datetime.timezone.utc)
 
-    # Format tags
     tag_list = [t.strip() for t in str(tags).split(",") if t.strip()]
-
-    # Add #Shorts to title or description for YouTube Shorts indexing
     full_description = f"{description}\n\n#Shorts"
 
     body = {
@@ -189,7 +169,6 @@ def upload_to_youtube(video_path, title, description, tags, target_utc_dt=None):
         }
     }
 
-    # Scheduling logic: must be >= 5 minutes in future for publishAt
     if target_utc_dt and (target_utc_dt - now_utc).total_seconds() > 300:
         body["status"]["privacyStatus"] = "private"
         body["status"]["publishAt"] = target_utc_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -217,9 +196,6 @@ def upload_to_youtube(video_path, title, description, tags, target_utc_dt=None):
 # 4. INSTAGRAM REELS UPLOADER & SCHEDULER
 # ==============================================================================
 def upload_to_instagram(video_path, caption, hashtags, target_utc_dt=None):
-    """
-    Direct resumable binary upload to Meta Instagram Reels with scheduling support.
-    """
     if not IG_USER_ID or not IG_ACCESS_TOKEN:
         print("⚠️ Instagram credentials not set. Skipping Instagram upload.")
         return None
@@ -228,7 +204,6 @@ def upload_to_instagram(video_path, caption, hashtags, target_utc_dt=None):
     file_size = os.path.getsize(video_path)
     now_utc = datetime.datetime.now(datetime.timezone.utc)
 
-    # Step 1: Start Resumable Session
     init_url = f"https://graph.facebook.com/v19.0/{IG_USER_ID}/video_reels"
     init_resp = requests.post(init_url, data={
         "upload_phase": "start",
@@ -241,7 +216,6 @@ def upload_to_instagram(video_path, caption, hashtags, target_utc_dt=None):
     video_id = init_resp["video_id"]
     upload_url = init_resp["upload_url"]
 
-    # Step 2: Binary Video Upload
     print(f"🚀 Uploading video bytes to Instagram Reel (ID: {video_id})...")
     with open(video_path, "rb") as f:
         headers = {
@@ -252,7 +226,6 @@ def upload_to_instagram(video_path, caption, hashtags, target_utc_dt=None):
         up_resp = requests.post(upload_url, headers=headers, data=f)
         up_resp.raise_for_status()
 
-    # Step 3: Finish & Schedule / Publish
     finish_params = {
         "upload_phase": "finish",
         "access_token": IG_ACCESS_TOKEN,
@@ -260,7 +233,6 @@ def upload_to_instagram(video_path, caption, hashtags, target_utc_dt=None):
         "caption": full_caption
     }
 
-    # Meta scheduling: must be between 10 minutes and 75 days in future
     if target_utc_dt:
         seconds_ahead = (target_utc_dt - now_utc).total_seconds()
         if 600 <= seconds_ahead <= (75 * 86400):
@@ -279,7 +251,6 @@ def upload_to_instagram(video_path, caption, hashtags, target_utc_dt=None):
 # 5. FACEBOOK PAGE REELS UPLOADER & SCHEDULER
 # ==============================================================================
 def resolve_facebook_page_token():
-    """Resolves or exchanges the Page Access Token for FB_PAGE_ID."""
     if FB_PAGE_ACCESS_TOKEN:
         return FB_PAGE_ACCESS_TOKEN
     if FB_PAGE_ID and IG_ACCESS_TOKEN:
@@ -290,9 +261,6 @@ def resolve_facebook_page_token():
     return None
 
 def upload_to_facebook_page(video_path, caption, hashtags, target_utc_dt=None):
-    """
-    Direct resumable binary upload to Facebook Page Reels with scheduling support.
-    """
     if not FB_PAGE_ID:
         print("⚠️ FB_PAGE_ID not set. Skipping Facebook Page upload.")
         return None
@@ -306,7 +274,6 @@ def upload_to_facebook_page(video_path, caption, hashtags, target_utc_dt=None):
     file_size = os.path.getsize(video_path)
     now_utc = datetime.datetime.now(datetime.timezone.utc)
 
-    # Step 1: Start Resumable Session on Facebook Page
     init_url = f"https://graph.facebook.com/v19.0/{FB_PAGE_ID}/video_reels"
     init_resp = requests.post(init_url, data={
         "upload_phase": "start",
@@ -319,7 +286,6 @@ def upload_to_facebook_page(video_path, caption, hashtags, target_utc_dt=None):
     video_id = init_resp["video_id"]
     upload_url = init_resp["upload_url"]
 
-    # Step 2: Binary Video Upload
     print(f"🚀 Uploading video bytes to Facebook Page Reel (ID: {video_id})...")
     with open(video_path, "rb") as f:
         headers = {
@@ -330,7 +296,6 @@ def upload_to_facebook_page(video_path, caption, hashtags, target_utc_dt=None):
         up_resp = requests.post(upload_url, headers=headers, data=f)
         up_resp.raise_for_status()
 
-    # Step 3: Finish & Schedule / Publish
     finish_params = {
         "upload_phase": "finish",
         "access_token": fb_token,
@@ -358,12 +323,9 @@ def upload_to_facebook_page(video_path, caption, hashtags, target_utc_dt=None):
 
 
 # ==============================================================================
-# 6. GOOGLE SHEET ROW PROCESSOR (SAFE GET_ALL_VALUES)
+# 6. GOOGLE SHEET ROW PROCESSOR
 # ==============================================================================
 def parse_target_time(time_str):
-    """
-    Parses datetime string and converts to UTC based on TZ_OFFSET_HOURS.
-    """
     if not time_str or str(time_str).strip().upper() in ["", "NOW", "IMMEDIATE"]:
         return None
     try:
@@ -377,7 +339,6 @@ def parse_target_time(time_str):
         return None
 
 def col_idx(headers, name, default):
-    """Finds 1-based column index by header name with fallback."""
     try:
         return headers.index(name.lower().strip()) + 1
     except ValueError:
@@ -393,22 +354,41 @@ def process_sheet():
     sheet = gc.open_by_key(SHEET_ID).sheet1
 
     all_rows = sheet.get_all_values()
-    if not all_rows or len(all_rows) < 2:
-        print("📊 Google Sheet has no data rows.")
+    if not all_rows or len(all_rows) < 1:
+        print("📊 Google Sheet is completely empty.")
         return
 
-    raw_headers = all_rows[0]
-    headers = [str(h).strip().lower() for h in raw_headers]
-    print(f"📊 Detected Headers: {headers}")
+    # Find the header row (look in first 5 rows)
+    header_row_index = 0
+    found_headers = False
+    for r_idx, r in enumerate(all_rows[:5]):
+        combined = " ".join([str(c).lower().strip() for c in r])
+        if "status" in combined or "video_url" in combined or "yt_title" in combined:
+            header_row_index = r_idx
+            found_headers = True
+            break
 
-    # Column index resolution
+    raw_headers = all_rows[header_row_index]
+    headers = [str(h).strip().lower() for h in raw_headers]
+    print(f"📊 Detected Headers (Row {header_row_index + 1}): {headers}")
+
+    if not found_headers and all(h == '' for h in headers):
+        print("⚠️ Warning: Your Google Sheet header row is empty!")
+        print("Please ensure Row 1 has the columns: id, status, scheduled_time, video_url, yt_title, etc.")
+        return
+
+    data_rows = all_rows[header_row_index + 1:]
+    if not data_rows:
+        print("📊 No data rows below the header row.")
+        return
+
     c_status = col_idx(headers, "status", 2)
     c_yt_link = col_idx(headers, "yt_link", 12)
     c_ig_id = col_idx(headers, "ig_id", 13)
     c_fb_id = col_idx(headers, "fb_id", 14)
     c_log = col_idx(headers, "log", 15)
 
-    for row_idx, row in enumerate(all_rows[1:], start=2):
+    for i, row in enumerate(data_rows, start=header_row_index + 2):
         row_dict = {}
         for idx, col_name in enumerate(headers):
             if col_name:
@@ -420,11 +400,11 @@ def process_sheet():
 
         title = row_dict.get("yt_title") or "Untitled Short"
         print(f"\n=======================================================")
-        print(f"🎯 Processing Row #{row_idx}: '{title}'")
+        print(f"🎯 Processing Row #{i}: '{title}'")
         print(f"=======================================================")
 
         # Mark as PROCESSING
-        sheet.update_cell(row_idx, c_status, "PROCESSING")
+        sheet.update_cell(i, c_status, "PROCESSING")
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             try:
@@ -491,21 +471,21 @@ def process_sheet():
                 yt_link = f"https://youtu.be/{yt_id}" if yt_id else ""
                 new_status = "SCHEDULED" if target_utc else "PUBLISHED"
 
-                sheet.update_cell(row_idx, c_status, new_status)
+                sheet.update_cell(i, c_status, new_status)
                 if yt_link:
-                    sheet.update_cell(row_idx, c_yt_link, yt_link)
+                    sheet.update_cell(i, c_yt_link, yt_link)
                 if ig_id:
-                    sheet.update_cell(row_idx, c_ig_id, str(ig_id))
+                    sheet.update_cell(i, c_ig_id, str(ig_id))
                 if fb_id:
-                    sheet.update_cell(row_idx, c_fb_id, str(fb_id))
-                sheet.update_cell(row_idx, c_log, f"Success at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-                print(f"🎉 Row #{row_idx} successfully processed for YT, IG, and FB!")
+                    sheet.update_cell(i, c_fb_id, str(fb_id))
+                sheet.update_cell(i, c_log, f"Success at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+                print(f"🎉 Row #{i} successfully processed for YT, IG, and FB!")
 
             except Exception as e:
                 err_msg = str(e)
-                print(f"❌ Critical Error processing Row #{row_idx}: {err_msg}")
-                sheet.update_cell(row_idx, c_status, "FAILED")
-                sheet.update_cell(row_idx, c_log, f"Error: {err_msg[:200]}")
+                print(f"❌ Critical Error processing Row #{i}: {err_msg}")
+                sheet.update_cell(i, c_status, "FAILED")
+                sheet.update_cell(i, c_log, f"Error: {err_msg[:200]}")
 
     print("\n🏁 All pending items finished.")
 
