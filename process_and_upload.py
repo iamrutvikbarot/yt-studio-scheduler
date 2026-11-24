@@ -1,5 +1,6 @@
 import os
 import sys
+import re
 import json
 import time
 import subprocess
@@ -38,8 +39,20 @@ TZ_OFFSET_HOURS = float(os.getenv("TIMEZONE_OFFSET_HOURS", "5.5"))
 
 
 # ==============================================================================
-# 1. FILE DOWNLOAD HELPER (GOOGLE DRIVE & DIRECT LINKS)
+# 1. FILE DOWNLOAD HELPER (BULLETPROOF GOOGLE DRIVE & DIRECT LINKS)
 # ==============================================================================
+def extract_gdrive_id(url):
+    m = re.search(r'/file/d/([a-zA-Z0-9_-]+)', url)
+    if m:
+        return m.group(1)
+    m = re.search(r'[?&]id=([a-zA-Z0-9_-]+)', url)
+    if m:
+        return m.group(1)
+    m = re.search(r'/d/([a-zA-Z0-9_-]+)', url)
+    if m:
+        return m.group(1)
+    return None
+
 def download_media(url, output_path):
     if not url or not str(url).strip():
         return None
@@ -47,14 +60,19 @@ def download_media(url, output_path):
     clean_url = str(url).strip()
     print(f"📥 Downloading: {clean_url} -> {output_path}")
 
-    if "drive.google.com" in clean_url:
+    # 1. Try Google Drive extraction via ID
+    file_id = extract_gdrive_id(clean_url)
+    if file_id:
+        print(f"  🔍 Detected Google Drive File ID: {file_id}")
         try:
-            gdown.download(clean_url, output_path, quiet=False, fuzzy=True)
-            if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
+            gdown.download(id=file_id, output=output_path, quiet=False)
+            if os.path.exists(output_path) and os.path.getsize(output_path) > 1024:
+                print(f"  ✅ Downloaded {os.path.getsize(output_path)} bytes from Google Drive.")
                 return output_path
         except Exception as e:
-            print(f"⚠️ gdown failed, attempting direct download: {e}")
+            print(f"  ⚠️ gdown by ID failed: {e}")
 
+    # 2. Standard direct HTTP download fallback
     response = requests.get(clean_url, stream=True, timeout=120)
     response.raise_for_status()
     with open(output_path, "wb") as f:
@@ -62,9 +80,9 @@ def download_media(url, output_path):
             if chunk:
                 f.write(chunk)
 
-    if os.path.exists(output_path) and os.path.getsize(output_path) > 0:
+    if os.path.exists(output_path) and os.path.getsize(output_path) > 1024:
         return output_path
-    raise RuntimeError(f"Failed to download media from {url}")
+    raise RuntimeError(f"Failed to download valid media from {url}")
 
 
 # ==============================================================================
@@ -323,24 +341,18 @@ def upload_to_facebook_page(video_path, caption, hashtags, target_utc_dt=None):
 
 
 # ==============================================================================
-# 6. SMART GOOGLE SHEET TAB & COLUMN RESOLUTION
+# 6. SMART GOOGLE SHEET RESOLUTION & PROCESSING
 # ==============================================================================
 def find_target_worksheet(spreadsheet):
-    """
-    Finds the correct worksheet. Prioritizes tabs named like 'Shorts & Reels Auto Scheduler'
-    or tabs that contain relevant headers.
-    """
     all_ws = spreadsheet.worksheets()
     print(f"📑 Available Worksheets: {[ws.title for ws in all_ws]}")
 
-    # 1. Match by name
     for ws in all_ws:
         t = ws.title.lower()
         if "short" in t or "reel" in t or "scheduler" in t or "auto" in t:
             print(f"🎯 Selected Worksheet by Name: '{ws.title}'")
             return ws
 
-    # 2. Match by content
     for ws in all_ws:
         rows = ws.get_all_values()
         for r in rows[:5]:
@@ -349,12 +361,9 @@ def find_target_worksheet(spreadsheet):
                 print(f"🎯 Selected Worksheet by Content: '{ws.title}'")
                 return ws
 
-    # 3. Fallback to first sheet
-    print(f"⚠️ Falling back to first sheet: '{spreadsheet.sheet1.title}'")
     return spreadsheet.sheet1
 
 def get_field(row_dict, *candidate_keys, default=""):
-    """Fetches first matching non-empty key from candidate list."""
     for k in candidate_keys:
         k_clean = k.lower().strip()
         if k_clean in row_dict and str(row_dict[k_clean]).strip():
@@ -362,7 +371,6 @@ def get_field(row_dict, *candidate_keys, default=""):
     return default
 
 def find_col_idx(headers, *candidate_names, default=1):
-    """Finds 1-based column index matching any candidate name."""
     for name in candidate_names:
         clean = name.lower().strip()
         if clean in headers:
@@ -391,7 +399,6 @@ def process_sheet():
     gc = gspread.service_account_from_dict(sa_info)
     spreadsheet = gc.open_by_key(SHEET_ID)
 
-    # Automatically select the right tab!
     sheet = find_target_worksheet(spreadsheet)
 
     all_rows = sheet.get_all_values()
@@ -399,14 +406,11 @@ def process_sheet():
         print(f"📊 Worksheet '{sheet.title}' is completely empty.")
         return
 
-    # Find header row in top 5 rows
     header_row_index = 0
-    found_headers = False
     for r_idx, r in enumerate(all_rows[:5]):
         combined = " ".join([str(c).lower().strip() for c in r])
         if "status" in combined or "ig_caption" in combined or "video_url" in combined or "yt_title" in combined:
             header_row_index = r_idx
-            found_headers = True
             break
 
     raw_headers = all_rows[header_row_index]
@@ -415,10 +419,9 @@ def process_sheet():
 
     data_rows = all_rows[header_row_index + 1:]
     if not data_rows:
-        print(f"📊 No data rows below the header row on '{sheet.title}'.")
+        print(f"📊 No data rows below header row on '{sheet.title}'.")
         return
 
-    # Dynamic column mapping
     c_status = find_col_idx(headers, "status", default=2)
     c_yt_link = find_col_idx(headers, "yt_link", "yt link", "youtube link", default=12)
     c_ig_id = find_col_idx(headers, "ig_id", "ig id", "instagram id", default=13)
@@ -432,7 +435,8 @@ def process_sheet():
                 row_dict[col_name] = row[idx] if idx < len(row) else ""
 
         status = get_field(row_dict, "status").upper()
-        if status != "PENDING":
+        # Process rows marked PENDING or RETRY
+        if status not in ["PENDING", "RETRY"]:
             continue
 
         title = get_field(row_dict, "yt_title", "title", "video_title", default="Untitled Short")
@@ -440,7 +444,6 @@ def process_sheet():
         print(f"🎯 Processing Row #{i}: '{title}'")
         print(f"=======================================================")
 
-        # Mark as PROCESSING
         sheet.update_cell(i, c_status, "PROCESSING")
 
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -449,7 +452,6 @@ def process_sheet():
                 music_url = get_field(row_dict, "music_url", "music url", "audio_url", "music", "song")
                 music_vol = float(get_field(row_dict, "music_volume", "music volume", "volume", default="0.25"))
 
-                # Date & Time resolution (supports separate date + time columns or combined scheduled_time)
                 scheduled_str = get_field(row_dict, "scheduled_time", "scheduled time")
                 if not scheduled_str:
                     s_date = get_field(row_dict, "schedule date", "schedule_date", "date")
@@ -461,7 +463,7 @@ def process_sheet():
 
                 target_utc = parse_target_time(scheduled_str)
 
-                # 1. Download raw video
+                # 1. Download raw video via Google Drive ID
                 raw_video_path = os.path.join(tmp_dir, "raw_video.mp4")
                 download_media(video_url, raw_video_path)
 
