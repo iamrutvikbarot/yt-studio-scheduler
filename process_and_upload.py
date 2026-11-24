@@ -311,14 +311,6 @@ def upload_to_instagram(video_path, caption, hashtags, target_utc_dt=None):
         "access_token": IG_ACCESS_TOKEN
     }
 
-    is_scheduled = False
-    if target_utc_dt:
-        seconds_ahead = (target_utc_dt - now_utc).total_seconds()
-        if 600 <= seconds_ahead <= (75 * 86400):
-            init_data["scheduled_publish_time"] = int(target_utc_dt.timestamp())
-            is_scheduled = True
-            print(f"📅 Instagram Reel scheduled for: {int(target_utc_dt.timestamp())}")
-
     print(f"🚀 Initializing Instagram Reels Container on /{IG_USER_ID}/media...")
     init_resp = requests.post(init_url, data=init_data).json()
     if "id" not in init_resp or "uri" not in init_resp:
@@ -339,7 +331,7 @@ def upload_to_instagram(video_path, caption, hashtags, target_utc_dt=None):
 
     print("⏳ Waiting for Instagram Reel container to finish processing...")
     status_url = f"https://graph.facebook.com/v19.0/{container_id}?fields=status_code,status&access_token={IG_ACCESS_TOKEN}"
-    for attempt in range(15):
+    for attempt in range(20):
         time.sleep(5)
         st_resp = requests.get(status_url).json()
         st_code = st_resp.get("status_code")
@@ -349,26 +341,22 @@ def upload_to_instagram(video_path, caption, hashtags, target_utc_dt=None):
         elif st_code == "ERROR":
             raise RuntimeError(f"Instagram container processing failed: {st_resp}")
 
-    if not is_scheduled:
-        print("📢 Publishing Instagram Reel immediately...")
-        pub_url = f"https://graph.facebook.com/v19.0/{IG_USER_ID}/media_publish"
-        pub_resp = requests.post(pub_url, data={
-            "creation_id": container_id,
-            "access_token": IG_ACCESS_TOKEN
-        }).json()
-        if "id" in pub_resp:
-            media_id = pub_resp["id"]
-            # Fetch direct permalink
-            perm_url = f"https://graph.facebook.com/v19.0/{media_id}?fields=permalink&access_token={IG_ACCESS_TOKEN}"
-            perm_resp = requests.get(perm_url).json()
-            final_link = perm_resp.get("permalink") or f"https://www.instagram.com/p/{media_id}/"
-            print(f"✅ Instagram Reel Published! Link: {final_link}")
-            return final_link
-        else:
-            raise RuntimeError(f"Instagram publish failed: {pub_resp}")
+    print("📢 Publishing Instagram Reel...")
+    pub_url = f"https://graph.facebook.com/v19.0/{IG_USER_ID}/media_publish"
+    pub_resp = requests.post(pub_url, data={
+        "creation_id": container_id,
+        "access_token": IG_ACCESS_TOKEN
+    }).json()
+    if "id" in pub_resp:
+        media_id = pub_resp["id"]
+        # Fetch direct permalink
+        perm_url = f"https://graph.facebook.com/v19.0/{media_id}?fields=permalink&access_token={IG_ACCESS_TOKEN}"
+        perm_resp = requests.get(perm_url).json()
+        final_link = perm_resp.get("permalink") or f"https://www.instagram.com/reel/{media_id}/"
+        print(f"✅ Instagram Reel Published! Link: {final_link}")
+        return final_link
     else:
-        print(f"✅ Instagram Reel Scheduled successfully! Container ID: {container_id}")
-        return f"Scheduled (ID: {container_id})"
+        raise RuntimeError(f"Instagram publish failed: {pub_resp}")
 
 
 # ==============================================================================
