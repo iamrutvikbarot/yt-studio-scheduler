@@ -2,8 +2,8 @@ name: Shorts & Reels Auto-Scheduler
 
 on:
   schedule:
-    # Runs every 30 minutes (24x7, completely free in GitHub Actions)
-    - cron: '*/30 * * * *'
+    # Runs every 15 minutes (24x7, completely free in GitHub Actions)
+    - cron: '*/15 * * * *'
   # Allows manual 1-click trigger from the GitHub Actions tab anytime
   workflow_dispatch:
 

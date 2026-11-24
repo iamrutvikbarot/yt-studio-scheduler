@@ -531,13 +531,52 @@ def process_sheet():
 
         status = get_field(row_dict, "status").upper()
         title = get_field(row_dict, "yt_title", "title", "video_title", default=f"Row #{i}")
-        print(f"  📋 Row #{i} ('{title[:30]}...'): Status='{status}'")
 
-        if status not in ["PENDING", "RETRY"]:
+        # Parse schedule date and time
+        scheduled_str = get_field(row_dict, "scheduled_time", "scheduled time")
+        if not scheduled_str:
+            s_date = get_field(row_dict, "schedule date", "schedule_date", "date")
+            s_time = get_field(row_dict, "schedule time", "schedule_time", "time")
+            if s_date and s_time:
+                scheduled_str = f"{s_date} {s_time}".strip()
+            elif s_date:
+                scheduled_str = s_date.strip()
+
+        target_utc = parse_target_time(scheduled_str)
+        now_utc = datetime.datetime.now(datetime.timezone.utc)
+
+        existing_yt_link = get_field(row_dict, "yt_link", "yt link", "youtube link")
+        existing_fb_id = get_field(row_dict, "fb_id", "fb id", "facebook id")
+        existing_ig_id = get_field(row_dict, "ig_id", "ig id", "instagram id")
+        ig_is_live = existing_ig_id.startswith("http")
+
+        # Determine if we should process this row
+        should_process = False
+        is_scheduled_trigger = False
+
+        if status in ["PENDING", "RETRY"]:
+            should_process = True
+        elif status == "SCHEDULED" and not ig_is_live:
+            if not target_utc or now_utc >= target_utc:
+                should_process = True
+                is_scheduled_trigger = True
+                print(f"  ⏰ Scheduled time arrived for Row #{i} ('{title[:25]}...')! Publishing pending Instagram Reel...")
+            else:
+                mins_left = int((target_utc - now_utc).total_seconds() / 60)
+                print(f"  ⏳ Row #{i} ('{title[:25]}...'): Status='SCHEDULED' ({mins_left} mins until {scheduled_str}). Waiting for scheduled time.")
+                continue
+        else:
+            print(f"  📋 Row #{i} ('{title[:25]}...'): Status='{status}'. Skipping.")
+            continue
+
+        if not should_process:
             continue
 
         print(f"\n=======================================================")
-        print(f"🎯 Processing Row #{i}: '{title}'")
+        if is_scheduled_trigger:
+            print(f"🚀 Cloud-Schedule Triggered for Row #{i}: '{title}'")
+        else:
+            print(f"🎯 Processing Row #{i}: '{title}'")
         print(f"=======================================================")
 
         sheet.update_cell(i, c_status, "PROCESSING")
@@ -550,17 +589,6 @@ def process_sheet():
 
                 music_url = get_field(row_dict, "music_url", "music url", "audio_url", "music", "song")
                 music_vol = float(get_field(row_dict, "music_volume", "music volume", "volume", default="0.25"))
-
-                scheduled_str = get_field(row_dict, "scheduled_time", "scheduled time")
-                if not scheduled_str:
-                    s_date = get_field(row_dict, "schedule date", "schedule_date", "date")
-                    s_time = get_field(row_dict, "schedule time", "schedule_time", "time")
-                    if s_date and s_time:
-                        scheduled_str = f"{s_date} {s_time}".strip()
-                    elif s_date:
-                        scheduled_str = s_date.strip()
-
-                target_utc = parse_target_time(scheduled_str)
 
                 # 1. Download raw video via Google Drive ID
                 raw_video_path = os.path.join(tmp_dir, "raw_video.mp4")
@@ -581,9 +609,8 @@ def process_sheet():
                     )
 
                 # 3. Upload to YouTube Shorts (Skip if already uploaded)
-                existing_yt_link = get_field(row_dict, "yt_link", "yt link", "youtube link")
                 yt_link = existing_yt_link
-                if not yt_link:
+                if not yt_link or not yt_link.startswith("http"):
                     try:
                         yt_id = upload_to_youtube(
                             video_path=final_video_path,
@@ -599,26 +626,9 @@ def process_sheet():
                 else:
                     print(f"  ℹ️ YouTube Short already uploaded: {existing_yt_link}. Skipping YT upload.")
 
-                # 4. Upload to Instagram Reels (Skip if already uploaded)
-                existing_ig_id = get_field(row_dict, "ig_id", "ig id", "instagram id")
-                ig_link = existing_ig_id
-                if not ig_link:
-                    try:
-                        ig_link = upload_to_instagram(
-                            video_path=final_video_path,
-                            caption=get_field(row_dict, "ig_caption", "caption"),
-                            hashtags=get_field(row_dict, "ig_hashtags", "hashtags"),
-                            target_utc_dt=target_utc
-                        )
-                    except Exception as ex_ig:
-                        print(f"❌ Instagram Upload Failed: {ex_ig}")
-                else:
-                    print(f"  ℹ️ Instagram Reel already uploaded: {existing_ig_id}. Skipping IG upload.")
-
-                # 5. Upload to Facebook Page Reels (Skip if already uploaded)
-                existing_fb_id = get_field(row_dict, "fb_id", "fb id", "facebook id")
+                # 4. Upload to Facebook Page Reels (Skip if already uploaded)
                 fb_link = existing_fb_id
-                if not fb_link:
+                if not fb_link or not fb_link.startswith("http"):
                     try:
                         fb_link = upload_to_facebook_page(
                             video_path=final_video_path,
@@ -631,8 +641,33 @@ def process_sheet():
                 else:
                     print(f"  ℹ️ Facebook Page Reel already uploaded: {existing_fb_id}. Skipping FB upload.")
 
+                # 5. Upload to Instagram Reels
+                ig_link = existing_ig_id
+                is_future = bool(target_utc and (target_utc - now_utc).total_seconds() > 600)
+
+                if not ig_link or not ig_link.startswith("http"):
+                    if is_future:
+                        ig_link = f"⏳ Scheduled for {scheduled_str}"
+                        print(f"  ⏳ Instagram Reel queued. Will automatically publish at {scheduled_str}.")
+                    else:
+                        try:
+                            ig_link = upload_to_instagram(
+                                video_path=final_video_path,
+                                caption=get_field(row_dict, "ig_caption", "caption"),
+                                hashtags=get_field(row_dict, "ig_hashtags", "hashtags")
+                            )
+                        except Exception as ex_ig:
+                            print(f"❌ Instagram Upload Failed: {ex_ig}")
+                else:
+                    print(f"  ℹ️ Instagram Reel already live: {existing_ig_id}. Skipping IG upload.")
+
                 # 6. Update Sheet
-                new_status = "SCHEDULED" if target_utc else "PUBLISHED"
+                if is_future:
+                    new_status = "SCHEDULED"
+                    log_text = f"YT & FB scheduled. IG queued for {scheduled_str}"
+                else:
+                    new_status = "PUBLISHED"
+                    log_text = f"All platforms published! Success at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
 
                 sheet.update_cell(i, c_status, new_status)
                 if yt_link:
@@ -641,8 +676,8 @@ def process_sheet():
                     sheet.update_cell(i, c_ig_id, str(ig_link))
                 if fb_link:
                     sheet.update_cell(i, c_fb_id, str(fb_link))
-                sheet.update_cell(i, c_log, f"Success at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-                print(f"🎉 Row #{i} successfully processed for YT, IG, and FB!")
+                sheet.update_cell(i, c_log, log_text)
+                print(f"🎉 Row #{i} successfully processed: Status={new_status} | YT={yt_link} | IG={ig_link} | FB={fb_link}")
 
             except Exception as e:
                 err_msg = str(e)
