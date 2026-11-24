@@ -53,6 +53,18 @@ def extract_gdrive_id(url):
         return m.group(1)
     return None
 
+def is_valid_media_file(file_path):
+    if not os.path.exists(file_path) or os.path.getsize(file_path) < 1024:
+        return False
+    try:
+        with open(file_path, "rb") as f:
+            head = f.read(1024).lower()
+        if b"<!doctype html" in head or b"<html" in head or b"<head" in head or b"<title" in head:
+            return False
+        return True
+    except Exception:
+        return False
+
 def download_media(url, output_path):
     if not url or not str(url).strip():
         return None
@@ -61,26 +73,94 @@ def download_media(url, output_path):
     print(f"📥 Downloading: {clean_url} -> {output_path}")
 
     file_id = extract_gdrive_id(clean_url)
+    session = requests.Session()
+    session.headers.update({
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    })
+
     if file_id:
         print(f"  🔍 Detected Google Drive File ID: {file_id}")
+
+        # Strategy 1: Google Drive UserContent CDN (direct stream, bypasses virus scan confirmation & bot scrapers)
+        try:
+            cdn_url = f"https://drive.usercontent.google.com/download?id={file_id}&export=download&confirm=t"
+            resp = session.get(cdn_url, stream=True, timeout=120)
+            if resp.status_code == 200 and "text/html" not in resp.headers.get("content-type", "").lower():
+                with open(output_path, "wb") as f:
+                    for chunk in resp.iter_content(chunk_size=1024 * 1024):
+                        if chunk:
+                            f.write(chunk)
+                if is_valid_media_file(output_path):
+                    print(f"  ✅ Successfully downloaded {os.path.getsize(output_path)} bytes via Google Drive Direct CDN.")
+                    return output_path
+        except Exception as e:
+            print(f"  ⚠️ Strategy 1 (Drive UserContent CDN) failed: {e}")
+
+        # Strategy 2: docs.google.com/uc with session cookie confirm
+        try:
+            uc_url = "https://docs.google.com/uc?export=download"
+            resp = session.get(uc_url, params={"id": file_id}, stream=True, timeout=120)
+            token = None
+            for key, val in session.cookies.items():
+                if key.startswith("download_warning"):
+                    token = val
+                    break
+            if token:
+                resp = session.get(uc_url, params={"id": file_id, "confirm": token}, stream=True, timeout=120)
+
+            if resp.status_code == 200 and "text/html" not in resp.headers.get("content-type", "").lower():
+                with open(output_path, "wb") as f:
+                    for chunk in resp.iter_content(chunk_size=1024 * 1024):
+                        if chunk:
+                            f.write(chunk)
+                if is_valid_media_file(output_path):
+                    print(f"  ✅ Successfully downloaded {os.path.getsize(output_path)} bytes via Google Docs UC.")
+                    return output_path
+        except Exception as e:
+            print(f"  ⚠️ Strategy 2 (Google Docs UC) failed: {e}")
+
+        # Strategy 3: gdown by ID
         try:
             gdown.download(id=file_id, output=output_path, quiet=False)
-            if os.path.exists(output_path) and os.path.getsize(output_path) > 1024:
-                print(f"  ✅ Downloaded {os.path.getsize(output_path)} bytes from Google Drive.")
+            if is_valid_media_file(output_path):
+                print(f"  ✅ Downloaded {os.path.getsize(output_path)} bytes from Google Drive via gdown.")
                 return output_path
         except Exception as e:
-            print(f"  ⚠️ gdown by ID failed: {e}")
+            print(f"  ⚠️ Strategy 3 (gdown) failed: {e}")
 
-    response = requests.get(clean_url, stream=True, timeout=120)
-    response.raise_for_status()
-    with open(output_path, "wb") as f:
-        for chunk in response.iter_content(chunk_size=1024 * 1024):
-            if chunk:
-                f.write(chunk)
+    # Strategy 4: Standard Direct HTTP/HTTPS Download (for non-Google Drive URLs)
+    if not file_id:
+        try:
+            response = session.get(clean_url, stream=True, timeout=120)
+            response.raise_for_status()
+            with open(output_path, "wb") as f:
+                for chunk in response.iter_content(chunk_size=1024 * 1024):
+                    if chunk:
+                        f.write(chunk)
+            if is_valid_media_file(output_path):
+                print(f"  ✅ Successfully downloaded {os.path.getsize(output_path)} bytes from direct URL.")
+                return output_path
+        except Exception as e:
+            print(f"  ⚠️ Strategy 4 (direct URL download) failed: {e}")
 
-    if os.path.exists(output_path) and os.path.getsize(output_path) > 1024:
-        return output_path
-    raise RuntimeError(f"Failed to download valid media from {url}")
+    # Clean up and report descriptive error if HTML was downloaded
+    if os.path.exists(output_path):
+        is_html = False
+        try:
+            with open(output_path, "rb") as f:
+                sample = f.read(512).lower()
+            if b"<html" in sample or b"<!doctype" in sample:
+                is_html = True
+            os.remove(output_path)
+        except Exception:
+            pass
+        if is_html:
+            raise RuntimeError(
+                f"Google Drive returned an HTML page instead of video/audio file. "
+                f"Please ensure the file sharing is set to 'Anyone with the link can view' (Viewer)."
+            )
+
+    raise RuntimeError(f"Failed to download valid media from URL: {url}")
 
 
 # ==============================================================================
@@ -135,6 +215,7 @@ def merge_audio_and_video(video_path, audio_path, output_path, music_volume=0.25
             "-map", "1:a",
             "-c:v", "copy",
             "-c:a", "aac",
+            "-af", f"volume={music_volume}",
             "-b:a", "192k",
             "-shortest",
             output_path
@@ -142,7 +223,9 @@ def merge_audio_and_video(video_path, audio_path, output_path, music_volume=0.25
 
     res = subprocess.run(cmd, capture_output=True, text=True)
     if res.returncode != 0:
-        raise RuntimeError(f"FFmpeg failed: {res.stderr}")
+        err_lines = [line.strip() for line in res.stderr.strip().splitlines() if line.strip()]
+        short_err = " | ".join(err_lines[-4:]) if err_lines else "Unknown FFmpeg error"
+        raise RuntimeError(f"FFmpeg failed: {short_err}")
 
     return output_path
 
