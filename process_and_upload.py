@@ -283,7 +283,6 @@ def resolve_facebook_page_token():
     if FB_PAGE_ACCESS_TOKEN:
         return FB_PAGE_ACCESS_TOKEN
     if FB_PAGE_ID and IG_ACCESS_TOKEN:
-        # Try fetching Page Access Token using the user token
         url = f"https://graph.facebook.com/v19.0/{FB_PAGE_ID}?fields=access_token&access_token={IG_ACCESS_TOKEN}"
         res = requests.get(url).json()
         if "access_token" in res:
@@ -293,7 +292,6 @@ def resolve_facebook_page_token():
 def upload_to_facebook_page(video_path, caption, hashtags, target_utc_dt=None):
     """
     Direct resumable binary upload to Facebook Page Reels with scheduling support.
-    Uses the same caption & hashtags as Instagram.
     """
     if not FB_PAGE_ID:
         print("⚠️ FB_PAGE_ID not set. Skipping Facebook Page upload.")
@@ -360,7 +358,7 @@ def upload_to_facebook_page(video_path, caption, hashtags, target_utc_dt=None):
 
 
 # ==============================================================================
-# 6. GOOGLE SHEET ROW PROCESSOR
+# 6. GOOGLE SHEET ROW PROCESSOR (SAFE GET_ALL_VALUES)
 # ==============================================================================
 def parse_target_time(time_str):
     """
@@ -378,6 +376,13 @@ def parse_target_time(time_str):
         print(f"⚠️ Failed to parse datetime '{time_str}': {e}. Defaulting to NOW.")
         return None
 
+def col_idx(headers, name, default):
+    """Finds 1-based column index by header name with fallback."""
+    try:
+        return headers.index(name.lower().strip()) + 1
+    except ValueError:
+        return default
+
 def process_sheet():
     if not SHEET_ID or not SERVICE_ACCOUNT_JSON:
         print("❌ Error: Missing GOOGLE_SHEET_ID or GOOGLE_SERVICE_ACCOUNT_JSON!")
@@ -387,32 +392,46 @@ def process_sheet():
     gc = gspread.service_account_from_dict(sa_info)
     sheet = gc.open_by_key(SHEET_ID).sheet1
 
-    records = sheet.get_all_records()
-    print(f"📊 Loaded {len(records)} rows from Google Sheet.")
+    all_rows = sheet.get_all_values()
+    if not all_rows or len(all_rows) < 2:
+        print("📊 Google Sheet has no data rows.")
+        return
 
-    # Expected column mapping:
-    # 1: id, 2: status, 3: scheduled_time, 4: video_url, 5: music_url,
-    # 6: music_volume, 7: yt_title, 8: yt_description, 9: yt_tags,
-    # 10: ig_caption, 11: ig_hashtags, 12: yt_link, 13: ig_id, 14: fb_id, 15: log
+    raw_headers = all_rows[0]
+    headers = [str(h).strip().lower() for h in raw_headers]
+    print(f"📊 Detected Headers: {headers}")
 
-    for i, row in enumerate(records, start=2):  # Row 1 is header
-        status = str(row.get("status", "")).strip().upper()
+    # Column index resolution
+    c_status = col_idx(headers, "status", 2)
+    c_yt_link = col_idx(headers, "yt_link", 12)
+    c_ig_id = col_idx(headers, "ig_id", 13)
+    c_fb_id = col_idx(headers, "fb_id", 14)
+    c_log = col_idx(headers, "log", 15)
+
+    for row_idx, row in enumerate(all_rows[1:], start=2):
+        row_dict = {}
+        for idx, col_name in enumerate(headers):
+            if col_name:
+                row_dict[col_name] = row[idx] if idx < len(row) else ""
+
+        status = str(row_dict.get("status", "")).strip().upper()
         if status != "PENDING":
             continue
 
+        title = row_dict.get("yt_title") or "Untitled Short"
         print(f"\n=======================================================")
-        print(f"🎯 Processing Row #{i}: {row.get('yt_title', 'Untitled')}")
+        print(f"🎯 Processing Row #{row_idx}: '{title}'")
         print(f"=======================================================")
 
         # Mark as PROCESSING
-        sheet.update_cell(i, 2, "PROCESSING")
+        sheet.update_cell(row_idx, c_status, "PROCESSING")
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             try:
-                video_url = row.get("video_url")
-                music_url = row.get("music_url")
-                music_vol = float(row.get("music_volume") or 0.25)
-                scheduled_str = row.get("scheduled_time")
+                video_url = row_dict.get("video_url")
+                music_url = row_dict.get("music_url")
+                music_vol = float(row_dict.get("music_volume") or 0.25)
+                scheduled_str = row_dict.get("scheduled_time")
 
                 target_utc = parse_target_time(scheduled_str)
 
@@ -436,9 +455,9 @@ def process_sheet():
                 try:
                     yt_id = upload_to_youtube(
                         video_path=final_video_path,
-                        title=row.get("yt_title", "Shorts"),
-                        description=row.get("yt_description", ""),
-                        tags=row.get("yt_tags", ""),
+                        title=title,
+                        description=row_dict.get("yt_description", ""),
+                        tags=row_dict.get("yt_tags", ""),
                         target_utc_dt=target_utc
                     )
                 except Exception as ex_yt:
@@ -449,20 +468,20 @@ def process_sheet():
                 try:
                     ig_id = upload_to_instagram(
                         video_path=final_video_path,
-                        caption=row.get("ig_caption", ""),
-                        hashtags=row.get("ig_hashtags", ""),
+                        caption=row_dict.get("ig_caption", ""),
+                        hashtags=row_dict.get("ig_hashtags", ""),
                         target_utc_dt=target_utc
                     )
                 except Exception as ex_ig:
                     print(f"❌ Instagram Upload Failed: {ex_ig}")
 
-                # 5. Upload to Facebook Page Reels (using same caption & hashtags)
+                # 5. Upload to Facebook Page Reels
                 fb_id = None
                 try:
                     fb_id = upload_to_facebook_page(
                         video_path=final_video_path,
-                        caption=row.get("ig_caption", ""),
-                        hashtags=row.get("ig_hashtags", ""),
+                        caption=row_dict.get("ig_caption", ""),
+                        hashtags=row_dict.get("ig_hashtags", ""),
                         target_utc_dt=target_utc
                     )
                 except Exception as ex_fb:
@@ -472,18 +491,21 @@ def process_sheet():
                 yt_link = f"https://youtu.be/{yt_id}" if yt_id else ""
                 new_status = "SCHEDULED" if target_utc else "PUBLISHED"
 
-                sheet.update_cell(i, 2, new_status)
-                sheet.update_cell(i, 12, yt_link)
-                sheet.update_cell(i, 13, str(ig_id or ""))
-                sheet.update_cell(i, 14, str(fb_id or ""))
-                sheet.update_cell(i, 15, f"Success at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-                print(f"🎉 Row #{i} successfully processed for YT, IG, and FB!")
+                sheet.update_cell(row_idx, c_status, new_status)
+                if yt_link:
+                    sheet.update_cell(row_idx, c_yt_link, yt_link)
+                if ig_id:
+                    sheet.update_cell(row_idx, c_ig_id, str(ig_id))
+                if fb_id:
+                    sheet.update_cell(row_idx, c_fb_id, str(fb_id))
+                sheet.update_cell(row_idx, c_log, f"Success at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+                print(f"🎉 Row #{row_idx} successfully processed for YT, IG, and FB!")
 
             except Exception as e:
                 err_msg = str(e)
-                print(f"❌ Critical Error processing Row #{i}: {err_msg}")
-                sheet.update_cell(i, 2, "FAILED")
-                sheet.update_cell(i, 15, f"Error: {err_msg[:200]}")
+                print(f"❌ Critical Error processing Row #{row_idx}: {err_msg}")
+                sheet.update_cell(row_idx, c_status, "FAILED")
+                sheet.update_cell(row_idx, c_log, f"Error: {err_msg[:200]}")
 
     print("\n🏁 All pending items finished.")
 
