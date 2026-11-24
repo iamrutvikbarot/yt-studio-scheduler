@@ -435,11 +435,13 @@ def process_sheet():
                 row_dict[col_name] = row[idx] if idx < len(row) else ""
 
         status = get_field(row_dict, "status").upper()
+        title = get_field(row_dict, "yt_title", "title", "video_title", default=f"Row #{i}")
+        print(f"  📋 Row #{i} ('{title[:30]}...'): Status='{status}'")
+
         # Process rows marked PENDING or RETRY
         if status not in ["PENDING", "RETRY"]:
             continue
 
-        title = get_field(row_dict, "yt_title", "title", "video_title", default="Untitled Short")
         print(f"\n=======================================================")
         print(f"🎯 Processing Row #{i}: '{title}'")
         print(f"=======================================================")
