@@ -209,17 +209,9 @@ def upload_to_youtube(video_path, title, description, tags, target_utc_dt=None):
 
 
 # ==============================================================================
-# 4. INSTAGRAM REELS UPLOADER & SCHEDULER (CORRECT REELS CONTAINER API)
+# 4. INSTAGRAM REELS UPLOADER & SCHEDULER
 # ==============================================================================
 def upload_to_instagram(video_path, caption, hashtags, target_utc_dt=None):
-    """
-    Uploads Instagram Reel using the official Instagram Graph API Reels container endpoint:
-    1. POST /{ig_user_id}/media with media_type=REELS, upload_type=resumable
-    2. POST binary video to upload_url
-    3. Wait for status_code == 'FINISHED'
-    4. If immediate: POST /{ig_user_id}/media_publish
-       If scheduled: Container automatically publishes at scheduled_publish_time!
-    """
     if not IG_USER_ID or not IG_ACCESS_TOKEN:
         print("⚠️ Instagram credentials not set. Skipping Instagram upload.")
         return None
@@ -228,7 +220,6 @@ def upload_to_instagram(video_path, caption, hashtags, target_utc_dt=None):
     file_size = os.path.getsize(video_path)
     now_utc = datetime.datetime.now(datetime.timezone.utc)
 
-    # Step 1: Create Resumable Reels Container on /{ig_user_id}/media
     init_url = f"https://graph.facebook.com/v19.0/{IG_USER_ID}/media"
     init_data = {
         "media_type": "REELS",
@@ -240,7 +231,6 @@ def upload_to_instagram(video_path, caption, hashtags, target_utc_dt=None):
     is_scheduled = False
     if target_utc_dt:
         seconds_ahead = (target_utc_dt - now_utc).total_seconds()
-        # Meta allows scheduling between 10 minutes and 75 days
         if 600 <= seconds_ahead <= (75 * 86400):
             init_data["scheduled_publish_time"] = int(target_utc_dt.timestamp())
             is_scheduled = True
@@ -254,7 +244,6 @@ def upload_to_instagram(video_path, caption, hashtags, target_utc_dt=None):
     container_id = init_resp["id"]
     upload_url = init_resp["uri"]
 
-    # Step 2: Upload Video Bytes to upload_url
     print(f"🚀 Uploading video bytes to Instagram Reel (Container ID: {container_id})...")
     with open(video_path, "rb") as f:
         headers = {
@@ -265,7 +254,6 @@ def upload_to_instagram(video_path, caption, hashtags, target_utc_dt=None):
         up_resp = requests.post(upload_url, headers=headers, data=f)
         up_resp.raise_for_status()
 
-    # Step 3: Wait for container to process
     print("⏳ Waiting for Instagram Reel container to finish processing...")
     status_url = f"https://graph.facebook.com/v19.0/{container_id}?fields=status_code,status&access_token={IG_ACCESS_TOKEN}"
     for attempt in range(15):
@@ -278,7 +266,6 @@ def upload_to_instagram(video_path, caption, hashtags, target_utc_dt=None):
         elif st_code == "ERROR":
             raise RuntimeError(f"Instagram container processing failed: {st_resp}")
 
-    # Step 4: If not scheduled, publish now. If scheduled, container publishes automatically!
     if not is_scheduled:
         print("📢 Publishing Instagram Reel immediately...")
         pub_url = f"https://graph.facebook.com/v19.0/{IG_USER_ID}/media_publish"
@@ -287,13 +274,18 @@ def upload_to_instagram(video_path, caption, hashtags, target_utc_dt=None):
             "access_token": IG_ACCESS_TOKEN
         }).json()
         if "id" in pub_resp:
-            print(f"✅ Instagram Reel Published successfully! Media ID: {pub_resp['id']}")
-            return pub_resp["id"]
+            media_id = pub_resp["id"]
+            # Fetch direct permalink
+            perm_url = f"https://graph.facebook.com/v19.0/{media_id}?fields=permalink&access_token={IG_ACCESS_TOKEN}"
+            perm_resp = requests.get(perm_url).json()
+            final_link = perm_resp.get("permalink") or f"https://www.instagram.com/p/{media_id}/"
+            print(f"✅ Instagram Reel Published! Link: {final_link}")
+            return final_link
         else:
             raise RuntimeError(f"Instagram publish failed: {pub_resp}")
     else:
         print(f"✅ Instagram Reel Scheduled successfully! Container ID: {container_id}")
-        return container_id
+        return f"Scheduled (ID: {container_id})"
 
 
 # ==============================================================================
@@ -367,12 +359,13 @@ def upload_to_facebook_page(video_path, caption, hashtags, target_utc_dt=None):
     if not finish_resp.get("success"):
         raise RuntimeError(f"Facebook Page Reel finish failed: {finish_resp}")
 
-    print(f"✅ Facebook Page Reel registered successfully! Video ID: {video_id}")
-    return video_id
+    reel_link = f"https://www.facebook.com/reel/{video_id}"
+    print(f"✅ Facebook Page Reel registered! Link: {reel_link}")
+    return reel_link
 
 
 # ==============================================================================
-# 6. SMART GOOGLE SHEET RESOLUTION & PROCESSING (WITH DEDUPLICATION)
+# 6. SMART GOOGLE SHEET RESOLUTION & PROCESSING
 # ==============================================================================
 def find_target_worksheet(spreadsheet):
     all_ws = spreadsheet.worksheets()
@@ -469,7 +462,6 @@ def process_sheet():
         title = get_field(row_dict, "yt_title", "title", "video_title", default=f"Row #{i}")
         print(f"  📋 Row #{i} ('{title[:30]}...'): Status='{status}'")
 
-        # Process rows marked PENDING or RETRY
         if status not in ["PENDING", "RETRY"]:
             continue
 
@@ -511,7 +503,7 @@ def process_sheet():
                         raw_video_path, raw_audio_path, mixed_video_path, music_vol
                     )
 
-                # 3. Upload to YouTube Shorts (Skip if already uploaded!)
+                # 3. Upload to YouTube Shorts (Skip if already uploaded)
                 existing_yt_link = get_field(row_dict, "yt_link", "yt link", "youtube link")
                 yt_link = existing_yt_link
                 if not yt_link:
@@ -528,14 +520,14 @@ def process_sheet():
                     except Exception as ex_yt:
                         print(f"❌ YouTube Upload Failed: {ex_yt}")
                 else:
-                    print(f"  ℹ️ YouTube Short already uploaded: {existing_yt_link}. Skipping duplicate YT upload.")
+                    print(f"  ℹ️ YouTube Short already uploaded: {existing_yt_link}. Skipping YT upload.")
 
-                # 4. Upload to Instagram Reels (Skip if already uploaded!)
+                # 4. Upload to Instagram Reels (Skip if already uploaded)
                 existing_ig_id = get_field(row_dict, "ig_id", "ig id", "instagram id")
-                ig_id = existing_ig_id
-                if not ig_id:
+                ig_link = existing_ig_id
+                if not ig_link:
                     try:
-                        ig_id = upload_to_instagram(
+                        ig_link = upload_to_instagram(
                             video_path=final_video_path,
                             caption=get_field(row_dict, "ig_caption", "caption"),
                             hashtags=get_field(row_dict, "ig_hashtags", "hashtags"),
@@ -544,14 +536,14 @@ def process_sheet():
                     except Exception as ex_ig:
                         print(f"❌ Instagram Upload Failed: {ex_ig}")
                 else:
-                    print(f"  ℹ️ Instagram Reel already uploaded: {existing_ig_id}. Skipping duplicate IG upload.")
+                    print(f"  ℹ️ Instagram Reel already uploaded: {existing_ig_id}. Skipping IG upload.")
 
-                # 5. Upload to Facebook Page Reels (Skip if already uploaded!)
+                # 5. Upload to Facebook Page Reels (Skip if already uploaded)
                 existing_fb_id = get_field(row_dict, "fb_id", "fb id", "facebook id")
-                fb_id = existing_fb_id
-                if not fb_id:
+                fb_link = existing_fb_id
+                if not fb_link:
                     try:
-                        fb_id = upload_to_facebook_page(
+                        fb_link = upload_to_facebook_page(
                             video_path=final_video_path,
                             caption=get_field(row_dict, "ig_caption", "caption"),
                             hashtags=get_field(row_dict, "ig_hashtags", "hashtags"),
@@ -560,7 +552,7 @@ def process_sheet():
                     except Exception as ex_fb:
                         print(f"❌ Facebook Upload Failed: {ex_fb}")
                 else:
-                    print(f"  ℹ️ Facebook Page Reel already uploaded: {existing_fb_id}. Skipping duplicate FB upload.")
+                    print(f"  ℹ️ Facebook Page Reel already uploaded: {existing_fb_id}. Skipping FB upload.")
 
                 # 6. Update Sheet
                 new_status = "SCHEDULED" if target_utc else "PUBLISHED"
@@ -568,10 +560,10 @@ def process_sheet():
                 sheet.update_cell(i, c_status, new_status)
                 if yt_link:
                     sheet.update_cell(i, c_yt_link, yt_link)
-                if ig_id:
-                    sheet.update_cell(i, c_ig_id, str(ig_id))
-                if fb_id:
-                    sheet.update_cell(i, c_fb_id, str(fb_id))
+                if ig_link:
+                    sheet.update_cell(i, c_ig_id, str(ig_link))
+                if fb_link:
+                    sheet.update_cell(i, c_fb_id, str(fb_link))
                 sheet.update_cell(i, c_log, f"Success at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
                 print(f"🎉 Row #{i} successfully processed for YT, IG, and FB!")
 
