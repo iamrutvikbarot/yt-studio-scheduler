@@ -33,7 +33,7 @@ IG_ACCESS_TOKEN = os.getenv("IG_ACCESS_TOKEN")
 FB_PAGE_ID = os.getenv("FB_PAGE_ID")
 FB_PAGE_ACCESS_TOKEN = os.getenv("FB_PAGE_ACCESS_TOKEN")
 
-# Default Timezone offset (e.g. IST +05:30 or set via TIMEZONE_OFFSET_HOURS env)
+# Default Timezone offset (IST +05:30 by default)
 TZ_OFFSET_HOURS = float(os.getenv("TIMEZONE_OFFSET_HOURS", "5.5"))
 
 
@@ -323,8 +323,52 @@ def upload_to_facebook_page(video_path, caption, hashtags, target_utc_dt=None):
 
 
 # ==============================================================================
-# 6. GOOGLE SHEET ROW PROCESSOR
+# 6. SMART GOOGLE SHEET TAB & COLUMN RESOLUTION
 # ==============================================================================
+def find_target_worksheet(spreadsheet):
+    """
+    Finds the correct worksheet. Prioritizes tabs named like 'Shorts & Reels Auto Scheduler'
+    or tabs that contain relevant headers.
+    """
+    all_ws = spreadsheet.worksheets()
+    print(f"📑 Available Worksheets: {[ws.title for ws in all_ws]}")
+
+    # 1. Match by name
+    for ws in all_ws:
+        t = ws.title.lower()
+        if "short" in t or "reel" in t or "scheduler" in t or "auto" in t:
+            print(f"🎯 Selected Worksheet by Name: '{ws.title}'")
+            return ws
+
+    # 2. Match by content
+    for ws in all_ws:
+        rows = ws.get_all_values()
+        for r in rows[:5]:
+            combined = " ".join([str(c).lower().strip() for c in r])
+            if "ig_caption" in combined or "yt_title" in combined or "status" in combined:
+                print(f"🎯 Selected Worksheet by Content: '{ws.title}'")
+                return ws
+
+    # 3. Fallback to first sheet
+    print(f"⚠️ Falling back to first sheet: '{spreadsheet.sheet1.title}'")
+    return spreadsheet.sheet1
+
+def get_field(row_dict, *candidate_keys, default=""):
+    """Fetches first matching non-empty key from candidate list."""
+    for k in candidate_keys:
+        k_clean = k.lower().strip()
+        if k_clean in row_dict and str(row_dict[k_clean]).strip():
+            return str(row_dict[k_clean]).strip()
+    return default
+
+def find_col_idx(headers, *candidate_names, default=1):
+    """Finds 1-based column index matching any candidate name."""
+    for name in candidate_names:
+        clean = name.lower().strip()
+        if clean in headers:
+            return headers.index(clean) + 1
+    return default
+
 def parse_target_time(time_str):
     if not time_str or str(time_str).strip().upper() in ["", "NOW", "IMMEDIATE"]:
         return None
@@ -338,12 +382,6 @@ def parse_target_time(time_str):
         print(f"⚠️ Failed to parse datetime '{time_str}': {e}. Defaulting to NOW.")
         return None
 
-def col_idx(headers, name, default):
-    try:
-        return headers.index(name.lower().strip()) + 1
-    except ValueError:
-        return default
-
 def process_sheet():
     if not SHEET_ID or not SERVICE_ACCOUNT_JSON:
         print("❌ Error: Missing GOOGLE_SHEET_ID or GOOGLE_SERVICE_ACCOUNT_JSON!")
@@ -351,42 +389,41 @@ def process_sheet():
 
     sa_info = json.loads(SERVICE_ACCOUNT_JSON)
     gc = gspread.service_account_from_dict(sa_info)
-    sheet = gc.open_by_key(SHEET_ID).sheet1
+    spreadsheet = gc.open_by_key(SHEET_ID)
+
+    # Automatically select the right tab!
+    sheet = find_target_worksheet(spreadsheet)
 
     all_rows = sheet.get_all_values()
     if not all_rows or len(all_rows) < 1:
-        print("📊 Google Sheet is completely empty.")
+        print(f"📊 Worksheet '{sheet.title}' is completely empty.")
         return
 
-    # Find the header row (look in first 5 rows)
+    # Find header row in top 5 rows
     header_row_index = 0
     found_headers = False
     for r_idx, r in enumerate(all_rows[:5]):
         combined = " ".join([str(c).lower().strip() for c in r])
-        if "status" in combined or "video_url" in combined or "yt_title" in combined:
+        if "status" in combined or "ig_caption" in combined or "video_url" in combined or "yt_title" in combined:
             header_row_index = r_idx
             found_headers = True
             break
 
     raw_headers = all_rows[header_row_index]
     headers = [str(h).strip().lower() for h in raw_headers]
-    print(f"📊 Detected Headers (Row {header_row_index + 1}): {headers}")
-
-    if not found_headers and all(h == '' for h in headers):
-        print("⚠️ Warning: Your Google Sheet header row is empty!")
-        print("Please ensure Row 1 has the columns: id, status, scheduled_time, video_url, yt_title, etc.")
-        return
+    print(f"📊 Detected Headers on '{sheet.title}' (Row {header_row_index + 1}): {headers}")
 
     data_rows = all_rows[header_row_index + 1:]
     if not data_rows:
-        print("📊 No data rows below the header row.")
+        print(f"📊 No data rows below the header row on '{sheet.title}'.")
         return
 
-    c_status = col_idx(headers, "status", 2)
-    c_yt_link = col_idx(headers, "yt_link", 12)
-    c_ig_id = col_idx(headers, "ig_id", 13)
-    c_fb_id = col_idx(headers, "fb_id", 14)
-    c_log = col_idx(headers, "log", 15)
+    # Dynamic column mapping
+    c_status = find_col_idx(headers, "status", default=2)
+    c_yt_link = find_col_idx(headers, "yt_link", "yt link", "youtube link", default=12)
+    c_ig_id = find_col_idx(headers, "ig_id", "ig id", "instagram id", default=13)
+    c_fb_id = find_col_idx(headers, "fb_id", "fb id", "facebook id", default=14)
+    c_log = find_col_idx(headers, "log", "logs", "error", default=15)
 
     for i, row in enumerate(data_rows, start=header_row_index + 2):
         row_dict = {}
@@ -394,11 +431,11 @@ def process_sheet():
             if col_name:
                 row_dict[col_name] = row[idx] if idx < len(row) else ""
 
-        status = str(row_dict.get("status", "")).strip().upper()
+        status = get_field(row_dict, "status").upper()
         if status != "PENDING":
             continue
 
-        title = row_dict.get("yt_title") or "Untitled Short"
+        title = get_field(row_dict, "yt_title", "title", "video_title", default="Untitled Short")
         print(f"\n=======================================================")
         print(f"🎯 Processing Row #{i}: '{title}'")
         print(f"=======================================================")
@@ -408,10 +445,19 @@ def process_sheet():
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             try:
-                video_url = row_dict.get("video_url")
-                music_url = row_dict.get("music_url")
-                music_vol = float(row_dict.get("music_volume") or 0.25)
-                scheduled_str = row_dict.get("scheduled_time")
+                video_url = get_field(row_dict, "video_url", "video url", "video link", "video_link", "video")
+                music_url = get_field(row_dict, "music_url", "music url", "audio_url", "music", "song")
+                music_vol = float(get_field(row_dict, "music_volume", "music volume", "volume", default="0.25"))
+
+                # Date & Time resolution (supports separate date + time columns or combined scheduled_time)
+                scheduled_str = get_field(row_dict, "scheduled_time", "scheduled time")
+                if not scheduled_str:
+                    s_date = get_field(row_dict, "schedule date", "schedule_date", "date")
+                    s_time = get_field(row_dict, "schedule time", "schedule_time", "time")
+                    if s_date and s_time:
+                        scheduled_str = f"{s_date} {s_time}".strip()
+                    elif s_date:
+                        scheduled_str = s_date.strip()
 
                 target_utc = parse_target_time(scheduled_str)
 
@@ -436,8 +482,8 @@ def process_sheet():
                     yt_id = upload_to_youtube(
                         video_path=final_video_path,
                         title=title,
-                        description=row_dict.get("yt_description", ""),
-                        tags=row_dict.get("yt_tags", ""),
+                        description=get_field(row_dict, "yt_description", "description", "desc"),
+                        tags=get_field(row_dict, "yt_tags", "tags"),
                         target_utc_dt=target_utc
                     )
                 except Exception as ex_yt:
@@ -448,8 +494,8 @@ def process_sheet():
                 try:
                     ig_id = upload_to_instagram(
                         video_path=final_video_path,
-                        caption=row_dict.get("ig_caption", ""),
-                        hashtags=row_dict.get("ig_hashtags", ""),
+                        caption=get_field(row_dict, "ig_caption", "caption"),
+                        hashtags=get_field(row_dict, "ig_hashtags", "hashtags"),
                         target_utc_dt=target_utc
                     )
                 except Exception as ex_ig:
@@ -460,8 +506,8 @@ def process_sheet():
                 try:
                     fb_id = upload_to_facebook_page(
                         video_path=final_video_path,
-                        caption=row_dict.get("ig_caption", ""),
-                        hashtags=row_dict.get("ig_hashtags", ""),
+                        caption=get_field(row_dict, "ig_caption", "caption"),
+                        hashtags=get_field(row_dict, "ig_hashtags", "hashtags"),
                         target_utc_dt=target_utc
                     )
                 except Exception as ex_fb:
