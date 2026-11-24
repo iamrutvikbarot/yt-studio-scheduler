@@ -557,6 +557,9 @@ def process_sheet():
         with tempfile.TemporaryDirectory() as tmp_dir:
             try:
                 video_url = get_field(row_dict, "video_url", "video url", "video link", "video_link", "video")
+                if not video_url or not str(video_url).strip():
+                    raise RuntimeError("Missing video URL! Column 'video_url' (Column D) is empty. Please provide a Google Drive video link.")
+
                 music_url = get_field(row_dict, "music_url", "music url", "audio_url", "music", "song")
                 music_vol = float(get_field(row_dict, "music_volume", "music volume", "volume", default="0.25"))
 
@@ -574,6 +577,9 @@ def process_sheet():
                 # 1. Download raw video via Google Drive ID
                 raw_video_path = os.path.join(tmp_dir, "raw_video.mp4")
                 download_media(video_url, raw_video_path)
+
+                if not os.path.exists(raw_video_path) or os.path.getsize(raw_video_path) < 1024:
+                    raise RuntimeError(f"Video file was not downloaded properly from '{video_url}'")
 
                 # 2. Download and merge music (if provided)
                 final_video_path = raw_video_path
