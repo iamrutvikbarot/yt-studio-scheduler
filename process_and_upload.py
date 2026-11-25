@@ -374,9 +374,63 @@ def has_audio_stream(video_path):
     except Exception:
         return False
 
+def get_video_stream_info(video_path):
+    cmd = [
+        "ffprobe", "-v", "error",
+        "-select_streams", "v:0",
+        "-show_entries", "stream=codec_name,width,height,pix_fmt,bit_rate:format=bit_rate",
+        "-of", "json",
+        video_path
+    ]
+    try:
+        res = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        data = json.loads(res.stdout or "{}")
+        streams = data.get("streams") or []
+        v = streams[0] if streams else {}
+        fmt = data.get("format") or {}
+        bit_rate = int(v.get("bit_rate") or fmt.get("bit_rate") or 0)
+        return {
+            "codec_name": (v.get("codec_name") or "").lower(),
+            "width": int(v.get("width") or 0),
+            "height": int(v.get("height") or 0),
+            "pix_fmt": (v.get("pix_fmt") or "").lower(),
+            "bit_rate": bit_rate,
+        }
+    except Exception:
+        return {}
+
+
 def merge_audio_and_video(video_path, audio_path, output_path, music_volume=1.0):
     if not audio_path or not os.path.exists(audio_path):
         return video_path
+
+    vinfo = get_video_stream_info(video_path)
+    needs_transcode = (
+        vinfo.get("width", 0) > 1080
+        or vinfo.get("height", 0) > 1920
+        or vinfo.get("bit_rate", 0) > 20_000_000
+        or (vinfo.get("codec_name") and vinfo.get("codec_name") != "h264")
+        or (vinfo.get("pix_fmt") and vinfo.get("pix_fmt") != "yuv420p")
+    )
+
+    if needs_transcode:
+        print(
+            f"🎞️ Normalizing video ({vinfo.get('width')}x{vinfo.get('height')}, "
+            f"{vinfo.get('codec_name')}, {vinfo.get('bit_rate', 0) // 1_000_000} Mbps) -> 1080p H.264 for Reels compatibility..."
+        )
+        video_opts = [
+            "-vf", "scale='min(1080,iw)':'min(1920,ih)':force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2",
+            "-c:v", "libx264",
+            "-preset", "veryfast",
+            "-profile:v", "high",
+            "-level", "4.1",
+            "-pix_fmt", "yuv420p",
+            "-b:v", "6M",
+            "-maxrate", "15M",
+            "-bufsize", "30M",
+        ]
+    else:
+        video_opts = ["-c:v", "copy"]
 
     print(f"🎬 Merging audio into video (Music Volume: {music_volume})...")
     video_has_audio = has_audio_stream(video_path)
@@ -395,9 +449,12 @@ def merge_audio_and_video(video_path, audio_path, output_path, music_volume=1.0)
             "-filter_complex", filter_str,
             "-map", "0:v",
             "-map", "[a_out]",
-            "-c:v", "copy",
+            *video_opts,
             "-c:a", "aac",
-            "-b:a", "192k",
+            "-b:a", "128k",
+            "-ar", "48000",
+            "-ac", "2",
+            "-movflags", "+faststart",
             "-shortest",
             output_path
         ]
@@ -409,10 +466,13 @@ def merge_audio_and_video(video_path, audio_path, output_path, music_volume=1.0)
             "-i", audio_path,
             "-map", "0:v",
             "-map", "1:a",
-            "-c:v", "copy",
+            *video_opts,
             "-c:a", "aac",
             "-af", f"volume={music_volume}",
-            "-b:a", "192k",
+            "-b:a", "128k",
+            "-ar", "48000",
+            "-ac", "2",
+            "-movflags", "+faststart",
             "-shortest",
             output_path
         ]
@@ -515,19 +575,23 @@ def upload_to_instagram(video_path, caption, hashtags, target_utc_dt=None):
     container_id = init_resp["id"]
     upload_url = init_resp["uri"]
 
-    print(f"🚀 Uploading video bytes to Instagram Reel (Container ID: {container_id})...")
+    print(f"🚀 Uploading video bytes to Instagram Reel (Container ID: {container_id}, Size: {file_size} bytes)...")
     with open(video_path, "rb") as f:
         headers = {
             "Authorization": f"OAuth {IG_ACCESS_TOKEN}",
             "offset": "0",
-            "file_size": str(file_size)
+            "file_size": str(file_size),
+            "Content-Type": "application/octet-stream",
         }
-        up_resp = requests.post(upload_url, headers=headers, data=f)
-        up_resp.raise_for_status()
+        up_resp = requests.post(upload_url, headers=headers, data=f, timeout=300)
+        if not up_resp.ok:
+            raise RuntimeError(
+                f"Instagram video byte upload failed ({up_resp.status_code}): {up_resp.text}"
+            )
 
     print("⏳ Waiting for Instagram Reel container to finish processing...")
     status_url = f"https://graph.facebook.com/v19.0/{container_id}?fields=status_code,status&access_token={IG_ACCESS_TOKEN}"
-    for attempt in range(20):
+    for attempt in range(30):
         time.sleep(5)
         st_resp = requests.get(status_url).json()
         st_code = st_resp.get("status_code")
@@ -974,6 +1038,7 @@ def process_sheet():
 
                 # 5. Upload to Instagram Reels
                 ig_link = existing_ig_id
+                ig_error = None
                 is_future = bool(target_utc and (target_utc - now_utc).total_seconds() > 600)
 
                 if not ig_link or not ig_link.startswith("http"):
@@ -988,20 +1053,27 @@ def process_sheet():
                                 hashtags=get_field(row_dict, "ig_hashtags", "hashtags")
                             )
                         except Exception as ex_ig:
+                            ig_error = str(ex_ig)
                             print(f"❌ Instagram Upload Failed: {ex_ig}")
                 else:
                     print(f"  ℹ️ Instagram Reel already live: {existing_ig_id}. Skipping IG upload.")
 
                 # 6. Update Sheet
                 fb_status_note = "FB" if (fb_link and str(fb_link).startswith("http")) else ("FB FAILED" if fb_error else "FB skipped")
+                ig_is_published = bool(ig_link and str(ig_link).startswith("http"))
                 if is_future:
                     new_status = "SCHEDULED"
                     log_text = f"YT & {fb_status_note} | IG queued for {scheduled_str} (at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')})"
+                elif ig_error or not ig_is_published:
+                    new_status = "FAILED"
+                    log_text = f"YT & {fb_status_note} | IG FAILED at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
                 else:
                     new_status = "PUBLISHED"
                     log_text = f"YT & {fb_status_note} & IG processed at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
                 if fb_error:
                     log_text += f" | FB Err: {fb_error[:100]}"
+                if ig_error:
+                    log_text += f" | IG Err: {ig_error[:120]}"
 
                 if was_random_from_folder and picked_song_name:
                     log_text += f" | Music: {picked_song_name}"
