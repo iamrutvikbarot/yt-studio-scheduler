@@ -4,10 +4,10 @@ on:
   schedule:
     # Other daily prime slots (IST: 9:30 AM, 1:30 PM, 8:30 PM, 10:30 PM)
     - cron: '0 4,8,15,17 * * *'
-    # Every 5 minutes from 4:00 PM to 8:00 PM IST (10:30 to 14:30 UTC)
-    - cron: '30-55/5 10 * * *'
-    - cron: '*/5 11-13 * * *'
-    - cron: '0-30/5 14 * * *'
+    # Every 5 minutes from 4:00 PM to 8:00 PM IST (10:30 to 14:30 UTC) using explicit POSIX cron lists
+    - cron: '30,35,40,45,50,55 10 * * *'
+    - cron: '*/5 11,12,13 * * *'
+    - cron: '0,5,10,15,20,25,30 14 * * *'
   # Allows manual 1-click trigger from the GitHub Actions tab anytime
   workflow_dispatch:
 
