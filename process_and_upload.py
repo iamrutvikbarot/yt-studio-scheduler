@@ -337,7 +337,7 @@ def has_audio_stream(video_path):
     except Exception:
         return False
 
-def merge_audio_and_video(video_path, audio_path, output_path, music_volume=0.25):
+def merge_audio_and_video(video_path, audio_path, output_path, music_volume=1.0):
     if not audio_path or not os.path.exists(audio_path):
         return video_path
 
@@ -751,7 +751,7 @@ def process_sheet():
                 if not music_url or not str(music_url).strip():
                     music_url = DEFAULT_MUSIC_FOLDER_URL
                     print(f"  🎵 'music_url' is empty — using default music folder: {music_url}")
-                music_vol = float(get_field(row_dict, "music_volume", "music volume", "volume", default="0.25"))
+                music_vol = 1.0
 
                 # 1. Download raw video via Google Drive ID
                 raw_video_path = os.path.join(tmp_dir, "raw_video.mp4")
