@@ -523,12 +523,26 @@ def upload_to_instagram(video_path, caption, hashtags, target_utc_dt=None):
 # ==============================================================================
 def resolve_facebook_page_token():
     if FB_PAGE_ACCESS_TOKEN:
-        return FB_PAGE_ACCESS_TOKEN
+        if FB_PAGE_ID:
+            try:
+                check = requests.get(
+                    f"https://graph.facebook.com/v19.0/{FB_PAGE_ID}?fields=id&access_token={FB_PAGE_ACCESS_TOKEN}",
+                    timeout=15
+                ).json()
+                if "error" not in check:
+                    return FB_PAGE_ACCESS_TOKEN
+                print(f"  ⚠️ FB_PAGE_ACCESS_TOKEN invalid/expired ({check['error'].get('message', '')}). Trying IG_ACCESS_TOKEN fallback...")
+            except Exception:
+                return FB_PAGE_ACCESS_TOKEN
+        else:
+            return FB_PAGE_ACCESS_TOKEN
     if FB_PAGE_ID and IG_ACCESS_TOKEN:
         url = f"https://graph.facebook.com/v19.0/{FB_PAGE_ID}?fields=access_token&access_token={IG_ACCESS_TOKEN}"
-        res = requests.get(url).json()
+        res = requests.get(url, timeout=15).json()
         if "access_token" in res:
             return res["access_token"]
+        if "error" in res:
+            print(f"  ⚠️ Could not derive Page Token from IG_ACCESS_TOKEN: {res['error'].get('message', res['error'])}")
     return None
 
 def upload_to_facebook_page(video_path, caption, hashtags, target_utc_dt=None):
@@ -805,6 +819,7 @@ def process_sheet():
 
                 # 4. Upload to Facebook Page Reels (Skip if already uploaded)
                 fb_link = existing_fb_id
+                fb_error = None
                 if not fb_link or not fb_link.startswith("http"):
                     try:
                         fb_link = upload_to_facebook_page(
@@ -814,6 +829,7 @@ def process_sheet():
                             target_utc_dt=target_utc
                         )
                     except Exception as ex_fb:
+                        fb_error = str(ex_fb)
                         print(f"❌ Facebook Upload Failed: {ex_fb}")
                 else:
                     print(f"  ℹ️ Facebook Page Reel already uploaded: {existing_fb_id}. Skipping FB upload.")
@@ -839,12 +855,15 @@ def process_sheet():
                     print(f"  ℹ️ Instagram Reel already live: {existing_ig_id}. Skipping IG upload.")
 
                 # 6. Update Sheet
+                fb_status_note = "FB" if (fb_link and str(fb_link).startswith("http")) else ("FB FAILED" if fb_error else "FB skipped")
                 if is_future:
                     new_status = "SCHEDULED"
-                    log_text = f"YT & FB scheduled. IG queued for {scheduled_str}"
+                    log_text = f"YT & {fb_status_note} | IG queued for {scheduled_str}"
                 else:
                     new_status = "PUBLISHED"
-                    log_text = f"All platforms published! Success at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                    log_text = f"YT & {fb_status_note} & IG processed at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                if fb_error:
+                    log_text += f" | FB Err: {fb_error[:100]}"
 
                 if was_random_from_folder and picked_song_name:
                     log_text += f" | Music: {picked_song_name}"
