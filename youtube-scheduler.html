@@ -961,26 +961,12 @@
     </div>
 
     <div class="controls-group">
-      <button type="button" class="quick-pill-btn" id="pillToday" onclick="setTargetQuickDate(0)">Today</button>
-      <button type="button" class="quick-pill-btn" id="pillTomorrow" onclick="setTargetQuickDate(1)">Tomorrow</button>
-      <button type="button" class="quick-pill-btn" id="pillWed" onclick="setTargetDayOfWeek(3)" title="Wednesday (Midweek Peak)">Wed</button>
-      <button type="button" class="quick-pill-btn" id="pillThu" onclick="setTargetDayOfWeek(4)" title="Thursday (Shorts Leader)">Thu</button>
-      <button type="button" class="quick-pill-btn" id="pillFri" onclick="setTargetDayOfWeek(5)" title="Friday (#1 Overall Peak)">Fri 🔥</button>
-      <button type="button" class="quick-pill-btn" id="pillSat" onclick="setTargetDayOfWeek(6)" title="Saturday (Morning Retention)">Sat</button>
-      <button type="button" class="quick-pill-btn" id="pillSun" onclick="setTargetDayOfWeek(0)" title="Sunday (Global #1 Slot)">Sun ⭐</button>
+      <button class="btn-spin-all" onclick="spinAllSequential()" aria-label="Spin All Slots">
+        <span class="spin-icon">🎲</span> Spin
+      </button>
 
-      <input type="date" id="datePicker" onchange="onDateChanged()" aria-label="Upload Target Date">
-      
       <button class="btn-icon" id="audioToggleBtn" title="Toggle Mechanical Haptic Audio" onclick="toggleAudio()" aria-label="Toggle Audio">
         🔊
-      </button>
-
-      <button class="btn-spin-all" onclick="spinAllSequential()" aria-label="Spin All Slots">
-        <span class="spin-icon">🎲</span> Spin All <kbd>R</kbd>
-      </button>
-
-      <button class="btn-copy-all" id="btnCopyAll" onclick="copyAllWithFeedback()" aria-label="Copy Full Schedule">
-        📋 Copy All <kbd>C</kbd>
       </button>
     </div>
   </header>
@@ -1207,66 +1193,7 @@
   }
 
   function getTargetDate() {
-    const val = document.getElementById('datePicker').value;
-    if (val) {
-      const [y, m, d] = val.split('-');
-      return new Date(y, m - 1, d);
-    }
-    const today = new Date();
-    document.getElementById('datePicker').value = today.toISOString().split('T')[0];
-    return today;
-  }
-
-  function setTargetQuickDate(offsetDays) {
-    const d = new Date();
-    d.setDate(d.getDate() + offsetDays);
-    document.getElementById('datePicker').value = d.toISOString().split('T')[0];
-    updateQuickPills();
-    onDateChanged();
-  }
-
-  function setTargetNextWeekend() {
-    const d = new Date();
-    const day = d.getDay();
-    let daysUntilSat = (6 - day + 7) % 7;
-    if (daysUntilSat === 0 && day !== 6) daysUntilSat = 7;
-    d.setDate(d.getDate() + daysUntilSat);
-    document.getElementById('datePicker').value = d.toISOString().split('T')[0];
-    updateQuickPills();
-    onDateChanged();
-  }
-
-  function setTargetDayOfWeek(targetDay) {
-    const d = new Date();
-    const currentDay = d.getDay();
-    let diff = (targetDay - currentDay + 7) % 7;
-    if (diff === 0) diff = 7; // jump to upcoming week if today is already that day
-    d.setDate(d.getDate() + diff);
-    document.getElementById('datePicker').value = d.toISOString().split('T')[0];
-    onDateChanged();
-  }
-
-  function updateQuickPills() {
-    const pickerVal = document.getElementById('datePicker').value;
-    const baseDate = getTargetDate();
-    const dayOfWeek = baseDate.getDay(); // 0=Sun, 3=Wed, 4=Thu, 5=Fri, 6=Sat
-
-    const todayStr = new Date().toISOString().split('T')[0];
-    const tomStr = new Date(Date.now() + 86400000).toISOString().split('T')[0];
-
-    document.getElementById('pillToday').classList.toggle('active', pickerVal === todayStr);
-    document.getElementById('pillTomorrow').classList.toggle('active', pickerVal === tomStr);
-    document.getElementById('pillWed').classList.toggle('active', dayOfWeek === 3);
-    document.getElementById('pillThu').classList.toggle('active', dayOfWeek === 4);
-    document.getElementById('pillFri').classList.toggle('active', dayOfWeek === 5);
-    document.getElementById('pillSat').classList.toggle('active', dayOfWeek === 6);
-    document.getElementById('pillSun').classList.toggle('active', dayOfWeek === 0);
-  }
-
-  function onDateChanged() {
-    updateDateDisplay();
-    updateQuickPills();
-    spinAllSequential();
+    return new Date();
   }
 
   function updateDateDisplay() {
@@ -1275,20 +1202,27 @@
     nextDate.setDate(nextDate.getDate() + 1);
 
     const isWeekend = (baseDate.getDay() === 0 || baseDate.getDay() === 6);
-    document.getElementById('hinNote').textContent = isWeekend 
-      ? 'Weekend: 9–10:15 AM Video → 12:30–2:30 PM Short' 
-      : 'Weekday: 4–5:15 PM Video → 5:30–7 PM Short';
+    const hinNote = document.getElementById('hinNote');
+    if (hinNote) {
+      hinNote.textContent = isWeekend 
+        ? 'Weekend: 9–10:15 AM Video → 12:30–2:30 PM Short' 
+        : 'Weekday: 4–5:15 PM Video → 5:30–7 PM Short';
+    }
 
     const baseStr = formatDate(baseDate);
     const nextStr = formatDate(nextDate);
 
     // Hindi dates (Same day)
-    document.getElementById('hinVideoDateText').textContent = baseStr;
-    document.getElementById('hinShortDateText').textContent = baseStr;
+    const hinVDate = document.getElementById('hinVideoDateText');
+    if (hinVDate) hinVDate.textContent = baseStr;
+    const hinSDate = document.getElementById('hinShortDateText');
+    if (hinSDate) hinSDate.textContent = baseStr;
 
-    // English dates (Rolled over +1 day for US midnight slots)
-    document.getElementById('engVideoDateText').textContent = nextStr;
-    document.getElementById('engShortDateText').textContent = nextStr;
+    // English dates (Rolled over +1 day for US morning slots)
+    const engVDate = document.getElementById('engVideoDateText');
+    if (engVDate) engVDate.textContent = nextStr;
+    const engSDate = document.getElementById('engShortDateText');
+    if (engSDate) engSDate.textContent = nextStr;
 
     // Dynamic Best Days Match Status
     const dayOfWeek = baseDate.getDay();
@@ -1555,9 +1489,7 @@ Target Base: ${baseStr}
 
   // Init on DOM load
   window.addEventListener('DOMContentLoaded', () => {
-    getTargetDate();
     updateDateDisplay();
-    updateQuickPills();
     spinAllSequential();
   });
 </script>
