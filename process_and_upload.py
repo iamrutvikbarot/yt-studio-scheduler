@@ -3,6 +3,8 @@ import sys
 import re
 import json
 import time
+import random
+import html
 import subprocess
 import tempfile
 import datetime
@@ -11,9 +13,10 @@ import requests
 import gdown
 import gspread
 from google.oauth2.credentials import Credentials
+from google.oauth2 import service_account
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload
+from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 
 # ==============================================================================
 # CONFIGURATION & ENVIRONMENT VARIABLES
@@ -41,7 +44,24 @@ TZ_OFFSET_HOURS = float(os.getenv("TIMEZONE_OFFSET_HOURS", "5.5"))
 # ==============================================================================
 # 1. FILE DOWNLOAD HELPER (BULLETPROOF GOOGLE DRIVE & DIRECT LINKS)
 # ==============================================================================
+AUDIO_EXTENSIONS = (".mp3", ".wav", ".m4a", ".aac", ".ogg", ".flac", ".opus")
+
+
+def extract_gdrive_folder_id(url):
+    if not url:
+        return None
+    m = re.search(r'/folders/([a-zA-Z0-9_-]+)', url)
+    if m:
+        return m.group(1)
+    m = re.search(r'folderview\?[^#]*\bid=([a-zA-Z0-9_-]+)', url)
+    if m:
+        return m.group(1)
+    return None
+
+
 def extract_gdrive_id(url):
+    if extract_gdrive_folder_id(url):
+        return None
     m = re.search(r'/file/d/([a-zA-Z0-9_-]+)', url)
     if m:
         return m.group(1)
@@ -52,6 +72,121 @@ def extract_gdrive_id(url):
     if m:
         return m.group(1)
     return None
+
+
+def get_drive_service(sa_info):
+    if not sa_info:
+        return None
+    creds = service_account.Credentials.from_service_account_info(
+        sa_info,
+        scopes=["https://www.googleapis.com/auth/drive.readonly"]
+    )
+    return build("drive", "v3", credentials=creds)
+
+
+def _is_audio_entry(name, mime_type=""):
+    mime = (mime_type or "").lower()
+    lower_name = (name or "").lower().strip()
+    if mime.startswith("audio/"):
+        return True
+    return lower_name.endswith(AUDIO_EXTENSIONS)
+
+
+def list_gdrive_folder_audio_files(folder_id, sa_info=None):
+    audio_files = []
+
+    # Strategy A: Official Google Drive v3 API via Service Account
+    if sa_info:
+        try:
+            drive = get_drive_service(sa_info)
+            page_token = None
+            all_items = []
+            while True:
+                resp = drive.files().list(
+                    q=f"'{folder_id}' in parents and trashed = false",
+                    fields="nextPageToken, files(id, name, mimeType)",
+                    pageSize=1000,
+                    pageToken=page_token,
+                    supportsAllDrives=True,
+                    includeItemsFromAllDrives=True
+                ).execute()
+                all_items.extend(resp.get("files", []))
+                page_token = resp.get("nextPageToken")
+                if not page_token:
+                    break
+
+            for item in all_items:
+                mime = item.get("mimeType", "")
+                if mime == "application/vnd.google-apps.folder":
+                    continue
+                if _is_audio_entry(item.get("name", ""), mime):
+                    audio_files.append({"id": item["id"], "name": item.get("name", item["id"])})
+
+            if audio_files:
+                print(f"  🎵 Found {len(audio_files)} audio file(s) in Drive folder via API.")
+                return audio_files
+            elif all_items:
+                print(f"  ⚠️ Drive folder has {len(all_items)} file(s), but none matched audio formats {AUDIO_EXTENSIONS}.")
+        except Exception as e:
+            print(f"  ⚠️ Drive API folder listing failed: {e}")
+
+    # Strategy B: Public Drive embeddedfolderview fallback (works if folder is 'Anyone with the link')
+    try:
+        embed_url = f"https://drive.google.com/embeddedfolderview?id={folder_id}#list"
+        resp = requests.get(
+            embed_url,
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"},
+            timeout=30
+        )
+        if resp.status_code == 200:
+            entries = re.findall(
+                r'href="https://drive\.google\.com/file/d/([a-zA-Z0-9_-]+)[^"]*"[^>]*>.*?<div class="flip-entry-title">([^<]+)</div>',
+                resp.text,
+                re.DOTALL
+            )
+            seen = set()
+            for fid, raw_name in entries:
+                if fid in seen:
+                    continue
+                seen.add(fid)
+                clean_name = html.unescape(raw_name).strip()
+                if _is_audio_entry(clean_name):
+                    audio_files.append({"id": fid, "name": clean_name})
+
+            if not audio_files:
+                # Fallback in case titles are hidden or audio files have no extension
+                raw_ids = re.findall(r'/file/d/([a-zA-Z0-9_-]+)', resp.text)
+                for fid in dict.fromkeys(raw_ids):
+                    audio_files.append({"id": fid, "name": f"{fid}.mp3"})
+
+            if audio_files:
+                print(f"  🎵 Found {len(audio_files)} audio file(s) in public Drive folder.")
+                return audio_files
+    except Exception as e:
+        print(f"  ⚠️ Public folder listing fallback failed: {e}")
+
+    raise RuntimeError(
+        f"No audio files found in Google Drive folder '{folder_id}'. "
+        f"Ensure the folder contains audio files (.mp3/.wav/.m4a) and sharing is set to "
+        f"'Anyone with the link can view' (or shared with your Service Account email)."
+    )
+
+
+def resolve_music_url(music_url, sa_info=None):
+    if not music_url or not str(music_url).strip():
+        return None, None, False
+
+    clean_url = str(music_url).strip()
+    folder_id = extract_gdrive_folder_id(clean_url)
+    if not folder_id:
+        return clean_url, None, False
+
+    print(f"📂 Detected Google Drive music folder ID: {folder_id}. Picking a random song...")
+    audio_files = list_gdrive_folder_audio_files(folder_id, sa_info=sa_info)
+    chosen = random.choice(audio_files)
+    chosen_url = f"https://drive.google.com/file/d/{chosen['id']}/view?usp=drive_link"
+    print(f"  🎲 Randomly picked song: '{chosen['name']}' ({chosen_url})")
+    return chosen_url, chosen["name"], True
 
 def is_valid_media_file(file_path):
     if not os.path.exists(file_path) or os.path.getsize(file_path) < 1024:
@@ -65,7 +200,7 @@ def is_valid_media_file(file_path):
     except Exception:
         return False
 
-def download_media(url, output_path):
+def download_media(url, output_path, sa_info=None):
     if not url or not str(url).strip():
         return None
 
@@ -127,6 +262,22 @@ def download_media(url, output_path):
                 return output_path
         except Exception as e:
             print(f"  ⚠️ Strategy 3 (gdown) failed: {e}")
+
+        # Strategy 3b: Authenticated Google Drive API download (if shared with Service Account)
+        if sa_info:
+            try:
+                drive = get_drive_service(sa_info)
+                request = drive.files().get_media(fileId=file_id, supportsAllDrives=True)
+                with open(output_path, "wb") as f:
+                    downloader = MediaIoBaseDownload(f, request)
+                    done = False
+                    while not done:
+                        _, done = downloader.next_chunk()
+                if is_valid_media_file(output_path):
+                    print(f"  ✅ Downloaded {os.path.getsize(output_path)} bytes via Google Drive API.")
+                    return output_path
+            except Exception as e:
+                print(f"  ⚠️ Strategy 3b (Drive API download) failed: {e}")
 
     # Strategy 4: Standard Direct HTTP/HTTPS Download (for non-Google Drive URLs)
     if not file_id:
@@ -196,6 +347,7 @@ def merge_audio_and_video(video_path, audio_path, output_path, music_volume=0.25
         cmd = [
             "ffmpeg", "-y",
             "-i", video_path,
+            "-stream_loop", "-1",
             "-i", audio_path,
             "-filter_complex", filter_str,
             "-map", "0:v",
@@ -210,6 +362,7 @@ def merge_audio_and_video(video_path, audio_path, output_path, music_volume=0.25
         cmd = [
             "ffmpeg", "-y",
             "-i", video_path,
+            "-stream_loop", "-1",
             "-i", audio_path,
             "-map", "0:v",
             "-map", "1:a",
@@ -518,6 +671,7 @@ def process_sheet():
         return
 
     c_status = find_col_idx(headers, "status", default=2)
+    c_music_url = find_col_idx(headers, "music_url", "music url", "audio_url", "music", "song", default=0)
     c_yt_link = find_col_idx(headers, "yt_link", "yt link", "youtube link", default=12)
     c_ig_id = find_col_idx(headers, "ig_id", "ig id", "instagram id", default=13)
     c_fb_id = find_col_idx(headers, "fb_id", "fb id", "facebook id", default=14)
@@ -592,21 +746,35 @@ def process_sheet():
 
                 # 1. Download raw video via Google Drive ID
                 raw_video_path = os.path.join(tmp_dir, "raw_video.mp4")
-                download_media(video_url, raw_video_path)
+                download_media(video_url, raw_video_path, sa_info=sa_info)
 
                 if not os.path.exists(raw_video_path) or os.path.getsize(raw_video_path) < 1024:
                     raise RuntimeError(f"Video file was not downloaded properly from '{video_url}'")
 
-                # 2. Download and merge music (if provided)
+                # 2. Download and merge music (if provided — supports single file or Drive folder)
                 final_video_path = raw_video_path
-                if music_url and str(music_url).strip():
-                    raw_audio_path = os.path.join(tmp_dir, "raw_music.mp3")
-                    download_media(music_url, raw_audio_path)
+                picked_song_name = None
+                picked_song_url = None
+                was_random_from_folder = False
 
-                    mixed_video_path = os.path.join(tmp_dir, "mixed_video.mp4")
-                    final_video_path = merge_audio_and_video(
-                        raw_video_path, raw_audio_path, mixed_video_path, music_vol
+                if music_url and str(music_url).strip():
+                    resolved_music_url, picked_song_name, was_random_from_folder = resolve_music_url(
+                        music_url, sa_info=sa_info
                     )
+                    if resolved_music_url:
+                        picked_song_url = resolved_music_url
+                        ext = ".mp3"
+                        if picked_song_name and "." in picked_song_name:
+                            candidate_ext = os.path.splitext(picked_song_name)[1].lower()
+                            if candidate_ext in AUDIO_EXTENSIONS:
+                                ext = candidate_ext
+                        raw_audio_path = os.path.join(tmp_dir, f"raw_music{ext}")
+                        download_media(resolved_music_url, raw_audio_path, sa_info=sa_info)
+
+                        mixed_video_path = os.path.join(tmp_dir, "mixed_video.mp4")
+                        final_video_path = merge_audio_and_video(
+                            raw_video_path, raw_audio_path, mixed_video_path, music_vol
+                        )
 
                 # 3. Upload to YouTube Shorts (Skip if already uploaded)
                 yt_link = existing_yt_link
@@ -668,6 +836,11 @@ def process_sheet():
                 else:
                     new_status = "PUBLISHED"
                     log_text = f"All platforms published! Success at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+
+                if was_random_from_folder and picked_song_name:
+                    log_text += f" | Music: {picked_song_name}"
+                    if c_music_url > 0 and picked_song_url:
+                        sheet.update_cell(i, c_music_url, picked_song_url)
 
                 sheet.update_cell(i, c_status, new_status)
                 if yt_link:

@@ -19,7 +19,7 @@ Create a new Google Sheet and set up the following **15 columns** in Row 1:
 | **B** | `status` | Set to `PENDING` when ready to publish. Script updates to `SCHEDULED` or `FAILED`. |
 | **C** | `scheduled_time` | Format: `YYYY-MM-DD HH:MM` (e.g., `2026-11-25 18:30`) or `NOW` |
 | **D** | `video_url` | Google Drive link or direct URL to the video file |
-| **E** | `music_url` | *(Optional)* Google Drive link or direct URL to MP3 audio file |
+| **E** | `music_url` | *(Optional)* Google Drive link to an audio file **or a Google Drive folder** (picks a random audio file automatically), or direct URL |
 | **F** | `music_volume` | *(Optional)* Background music volume (e.g., `0.2` = 20%, `0.5` = 50%, default `0.25`) |
 | **G** | `yt_title` | YouTube Shorts Title (up to 100 characters) |
 | **H** | `yt_description` | YouTube Description (Script automatically adds `#Shorts`) |
