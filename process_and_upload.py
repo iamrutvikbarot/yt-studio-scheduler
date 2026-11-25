@@ -40,6 +40,12 @@ FB_PAGE_ACCESS_TOKEN = os.getenv("FB_PAGE_ACCESS_TOKEN")
 # Default Timezone offset (IST +05:30 by default)
 TZ_OFFSET_HOURS = float(os.getenv("TIMEZONE_OFFSET_HOURS", "5.5"))
 
+# Default Google Drive Music Folder URL (used when row's music_url is empty)
+DEFAULT_MUSIC_FOLDER_URL = os.getenv(
+    "DEFAULT_MUSIC_FOLDER_URL",
+    "https://drive.google.com/drive/folders/1_dtklc3nCicJc1WRj5DUeHMSlQX9LvSF"
+)
+
 
 # ==============================================================================
 # 1. FILE DOWNLOAD HELPER (BULLETPROOF GOOGLE DRIVE & DIRECT LINKS)
@@ -742,6 +748,9 @@ def process_sheet():
                     raise RuntimeError("Missing video URL! Column 'video_url' (Column D) is empty. Please provide a Google Drive video link.")
 
                 music_url = get_field(row_dict, "music_url", "music url", "audio_url", "music", "song")
+                if not music_url or not str(music_url).strip():
+                    music_url = DEFAULT_MUSIC_FOLDER_URL
+                    print(f"  🎵 'music_url' is empty — using default music folder: {music_url}")
                 music_vol = float(get_field(row_dict, "music_volume", "music volume", "volume", default="0.25"))
 
                 # 1. Download raw video via Google Drive ID
