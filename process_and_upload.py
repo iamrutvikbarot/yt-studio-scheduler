@@ -46,6 +46,9 @@ DEFAULT_MUSIC_FOLDER_URL = os.getenv(
     "https://drive.google.com/drive/folders/1_dtklc3nCicJc1WRj5DUeHMSlQX9LvSF"
 )
 
+# Avoid reusing any song already used within this many days (48 hours by default)
+MUSIC_COOLDOWN_DAYS = float(os.getenv("MUSIC_COOLDOWN_DAYS", "2"))
+
 
 # ==============================================================================
 # 1. FILE DOWNLOAD HELPER (BULLETPROOF GOOGLE DRIVE & DIRECT LINKS)
@@ -178,7 +181,14 @@ def list_gdrive_folder_audio_files(folder_id, sa_info=None):
     )
 
 
-def resolve_music_url(music_url, sa_info=None):
+def resolve_music_url(
+    music_url,
+    sa_info=None,
+    exclude_ids=None,
+    exclude_names=None,
+    session_ids=None,
+    session_names=None
+):
     if not music_url or not str(music_url).strip():
         return None, None, False
 
@@ -189,7 +199,34 @@ def resolve_music_url(music_url, sa_info=None):
 
     print(f"📂 Detected Google Drive music folder ID: {folder_id}. Picking a random song...")
     audio_files = list_gdrive_folder_audio_files(folder_id, sa_info=sa_info)
-    chosen = random.choice(audio_files)
+
+    ex_ids = set(exclude_ids or ())
+    ex_names = {n.lower().strip() for n in (exclude_names or ()) if n}
+    sess_ids = set(session_ids or ())
+    sess_names = {n.lower().strip() for n in (session_names or ()) if n}
+
+    all_ex_ids = ex_ids | sess_ids
+    all_ex_names = ex_names | sess_names
+
+    eligible = [
+        f for f in audio_files
+        if f["id"] not in all_ex_ids and f["name"].lower().strip() not in all_ex_names
+    ]
+
+    if eligible:
+        skipped_count = len(audio_files) - len(eligible)
+        if skipped_count > 0:
+            print(f"  🧹 Skipped {skipped_count} recently used song(s) (last {MUSIC_COOLDOWN_DAYS:g} days); choosing from {len(eligible)} fresh track(s).")
+        chosen = random.choice(eligible)
+    else:
+        session_eligible = [
+            f for f in audio_files
+            if f["id"] not in sess_ids and f["name"].lower().strip() not in sess_names
+        ]
+        pool = session_eligible if session_eligible else audio_files
+        print(f"  ⚠️ All {len(audio_files)} song(s) were used recently; falling back to pool of {len(pool)} track(s).")
+        chosen = random.choice(pool)
+
     chosen_url = f"https://drive.google.com/file/d/{chosen['id']}/view?usp=drive_link"
     print(f"  🎲 Randomly picked song: '{chosen['name']}' ({chosen_url})")
     return chosen_url, chosen["name"], True
@@ -658,6 +695,85 @@ def parse_target_time(time_str):
         print(f"⚠️ Failed to parse datetime '{time_str}': {e}. Defaulting to NOW.")
         return None
 
+
+def _extract_log_datetime(log_str):
+    if not log_str:
+        return None
+    matches = re.findall(r'\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(?::\d{2})?', str(log_str))
+    for m in reversed(matches):
+        dt = parse_target_time(m)
+        if dt:
+            return dt
+    return None
+
+
+def collect_recently_used_music(
+    data_rows,
+    headers,
+    now_utc,
+    target_utc=None,
+    cooldown_days=MUSIC_COOLDOWN_DAYS,
+    exclude_row_offset=None
+):
+    used_ids = set()
+    used_names = set()
+    cooldown_secs = cooldown_days * 86400
+
+    for idx, row in enumerate(data_rows):
+        if exclude_row_offset is not None and idx == exclude_row_offset:
+            continue
+
+        r_dict = {}
+        for col_idx, col_name in enumerate(headers):
+            if col_name:
+                r_dict[col_name] = row[col_idx] if col_idx < len(row) else ""
+
+        r_status = get_field(r_dict, "status").upper()
+        if r_status in ("", "FAILED"):
+            continue
+
+        r_music_url = get_field(r_dict, "music_url", "music url", "audio_url", "music", "song")
+        r_file_id = extract_gdrive_id(r_music_url) if r_music_url else None
+        r_log = get_field(r_dict, "log", "logs", "error")
+        m_song = re.search(r'Music:\s*([^\n|]+)', r_log) if r_log else None
+        r_song_name = m_song.group(1).strip() if m_song else None
+
+        if not r_file_id and not r_song_name:
+            continue
+
+        sched_str = get_field(r_dict, "scheduled_time", "scheduled time")
+        if not sched_str:
+            s_date = get_field(r_dict, "schedule date", "schedule_date", "date")
+            s_time = get_field(r_dict, "schedule time", "schedule_time", "time")
+            if s_date and s_time:
+                sched_str = f"{s_date} {s_time}".strip()
+            elif s_date:
+                sched_str = s_date.strip()
+
+        r_sched_dt = parse_target_time(sched_str) if sched_str else None
+        r_log_dt = _extract_log_datetime(r_log)
+
+        is_recent = False
+        if r_status in ("SCHEDULED", "PROCESSING"):
+            if r_sched_dt is None or (now_utc - r_sched_dt).total_seconds() <= cooldown_secs:
+                is_recent = True
+        if not is_recent and r_log_dt is not None:
+            if (now_utc - r_log_dt).total_seconds() <= cooldown_secs:
+                is_recent = True
+        if not is_recent and r_sched_dt is not None:
+            if (now_utc - r_sched_dt).total_seconds() <= cooldown_secs:
+                is_recent = True
+            elif target_utc is not None and abs((target_utc - r_sched_dt).total_seconds()) <= cooldown_secs:
+                is_recent = True
+
+        if is_recent:
+            if r_file_id:
+                used_ids.add(r_file_id)
+            if r_song_name:
+                used_names.add(r_song_name.lower().strip())
+
+    return used_ids, used_names
+
 def process_sheet():
     if not SHEET_ID or not SERVICE_ACCOUNT_JSON:
         print("❌ Error: Missing GOOGLE_SHEET_ID or GOOGLE_SERVICE_ACCOUNT_JSON!")
@@ -697,7 +813,11 @@ def process_sheet():
     c_fb_id = find_col_idx(headers, "fb_id", "fb id", "facebook id", default=14)
     c_log = find_col_idx(headers, "log", "logs", "error", default=15)
 
-    for i, row in enumerate(data_rows, start=header_row_index + 2):
+    session_used_ids = set()
+    session_used_names = set()
+
+    for row_offset, row in enumerate(data_rows):
+        i = row_offset + header_row_index + 2
         row_dict = {}
         for idx, col_name in enumerate(headers):
             if col_name:
@@ -781,11 +901,29 @@ def process_sheet():
                 was_random_from_folder = False
 
                 if music_url and str(music_url).strip():
+                    recent_ids, recent_names = collect_recently_used_music(
+                        data_rows,
+                        headers,
+                        now_utc,
+                        target_utc=target_utc,
+                        cooldown_days=MUSIC_COOLDOWN_DAYS,
+                        exclude_row_offset=row_offset
+                    )
                     resolved_music_url, picked_song_name, was_random_from_folder = resolve_music_url(
-                        music_url, sa_info=sa_info
+                        music_url,
+                        sa_info=sa_info,
+                        exclude_ids=recent_ids,
+                        exclude_names=recent_names,
+                        session_ids=session_used_ids,
+                        session_names=session_used_names
                     )
                     if resolved_music_url:
                         picked_song_url = resolved_music_url
+                        picked_id = extract_gdrive_id(resolved_music_url)
+                        if picked_id:
+                            session_used_ids.add(picked_id)
+                        if picked_song_name:
+                            session_used_names.add(picked_song_name.lower().strip())
                         ext = ".mp3"
                         if picked_song_name and "." in picked_song_name:
                             candidate_ext = os.path.splitext(picked_song_name)[1].lower()
@@ -858,7 +996,7 @@ def process_sheet():
                 fb_status_note = "FB" if (fb_link and str(fb_link).startswith("http")) else ("FB FAILED" if fb_error else "FB skipped")
                 if is_future:
                     new_status = "SCHEDULED"
-                    log_text = f"YT & {fb_status_note} | IG queued for {scheduled_str}"
+                    log_text = f"YT & {fb_status_note} | IG queued for {scheduled_str} (at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')})"
                 else:
                     new_status = "PUBLISHED"
                     log_text = f"YT & {fb_status_note} & IG processed at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
