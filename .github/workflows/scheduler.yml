@@ -2,11 +2,18 @@ name: Shorts & Reels Auto-Scheduler
 
 on:
   schedule:
-    # Runs 6 times a day at prime posting hours (IST: 9:30 AM, 1:30 PM, 4:30 PM, 6:30 PM, 8:30 PM, 10:30 PM)
-    # 6 runs/day x 1 min = ~180 min/month (saving 90%+ of free minutes)
-    - cron: '0 4,8,11,13,15,17 * * *'
+    # Other daily prime slots (IST: 9:30 AM, 1:30 PM, 8:30 PM, 10:30 PM)
+    - cron: '0 4,8,15,17 * * *'
+    # Every 5 minutes from 4:00 PM to 8:00 PM IST (10:30 to 14:30 UTC)
+    - cron: '30-55/5 10 * * *'
+    - cron: '*/5 11-13 * * *'
+    - cron: '0-30/5 14 * * *'
   # Allows manual 1-click trigger from the GitHub Actions tab anytime
   workflow_dispatch:
+
+concurrency:
+  group: shorts-reels-auto-scheduler
+  cancel-in-progress: false
 
 jobs:
   process-and-upload:
