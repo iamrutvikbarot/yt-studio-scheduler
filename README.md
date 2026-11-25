@@ -20,7 +20,7 @@ An Apple & Vercel-inspired batch upload time picker designed for YouTube creator
   - `1️⃣ Video (Upload First)` publishes during high-velocity windows.
   - `2️⃣ Short (Upload After)` drops after the long video is already indexing to drive instant watch velocity.
 - **Automatic US Date Rollover (+1 Day)**:
-  - Targeting American viewers (2:00–4:00 PM EST) from India (IST) requires scheduling between `12:30 AM – 2:30 AM IST`.
+  - Targeting American viewers (6:30–9:30 PM EST) from India (IST) requires scheduling between `5:00 AM – 8:00 AM IST`.
   - The app automatically calculates and flags the **Next-Day Date** (+1 Day badge) so you never schedule on the wrong date in YouTube Studio.
 - **iPhone Wheel Drum Animation**:
   - Physics-based rolling reels with cylindrical gradient masks and center frosted selection lens.
@@ -41,8 +41,8 @@ An Apple & Vercel-inspired batch upload time picker designed for YouTube creator
 | :--- | :--- | :--- | :--- |
 | **Hindi & Gujarati** | Long-Form | `4:00 PM – 5:15 PM` (Weekdays)<br>`9:00 AM – 10:15 AM` (Weekends) | Upload 1–2 hours before the 6–9 PM Indian watch peak |
 | **Hindi & Gujarati** | Shorts | `5:30 PM – 7:00 PM` (Weekdays)<br>`12:30 PM – 2:30 PM` (Weekends) | Commute return & lunch-break mobile scroll |
-| **English (US Focus)** | Long-Form | `12:30 AM – 1:30 AM` **(+1 Day)** | Hits US East Coast afternoon (2–3 PM EST) |
-| **English (US Focus)** | Shorts | `1:45 AM – 2:45 AM` **(+1 Day)** | Pairs immediately after the US Long-form release |
+| **English (US Focus)** | Long-Form | `5:00 AM – 6:30 AM` **(+1 Day)** | Hits US East Coast evening prime time (6:30–8:00 PM EST) |
+| **English (US Focus)** | Shorts | `6:45 AM – 8:00 AM` **(+1 Day)** | Pairs immediately after the US Long-form release |
 
 ---
 
