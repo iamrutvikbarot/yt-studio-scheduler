@@ -53,6 +53,10 @@ MUSIC_COOLDOWN_DAYS = float(os.getenv("MUSIC_COOLDOWN_DAYS", "2"))
 # Target Google Drive folder for saving ready merged videos (for manual Instagram posting)
 TARGET_DRIVE_FOLDER_ID = os.getenv("TARGET_DRIVE_FOLDER_ID", "1pvRu3Wcf0T58_UxqBGfxWUL7-lxeTMuj")
 
+# WhatsApp Alerts (via CallMeBot)
+WHATSAPP_PHONE = os.getenv("WHATSAPP_PHONE")
+WHATSAPP_APIKEY = os.getenv("WHATSAPP_APIKEY")
+
 
 # ==============================================================================
 # 1. FILE DOWNLOAD HELPER (BULLETPROOF GOOGLE DRIVE & DIRECT LINKS)
@@ -702,6 +706,46 @@ def is_link_live(url):
         return True
 
 
+def send_whatsapp_alert(phone, apikey, title, drive_url, caption, hashtags, scheduled_time_str):
+    """
+    Sends a scheduled WhatsApp notification via CallMeBot API.
+    """
+    if not phone or not apikey:
+        print("  ℹ️ WhatsApp notification skipped: WHATSAPP_PHONE or WHATSAPP_APIKEY not configured.")
+        return False
+
+    caption_text = caption or "Check out our latest reel!"
+    hashtags_text = hashtags or "#reels #shorts"
+    drive_link = drive_url or "Check your Google Drive Videos folder"
+
+    message = (
+        f"🎬 *Reel Ready to Post on Instagram!*\n\n"
+        f"📌 *Title:* {title}\n"
+        f"⏰ *Scheduled Time:* {scheduled_time_str}\n\n"
+        f"📂 *Google Drive Video:*\n{drive_link}\n\n"
+        f"📝 *Caption & Hashtags (Tap to Copy):*\n{caption_text}\n\n{hashtags_text}"
+    )
+
+    clean_phone = phone.strip()
+    if not clean_phone.startswith("+"):
+        clean_phone = "+" + clean_phone
+
+    encoded_msg = requests.utils.quote(message)
+    api_url = f"https://api.callmebot.com/whatsapp.php?phone={clean_phone}&text={encoded_msg}&apikey={apikey.strip()}"
+
+    try:
+        r = requests.get(api_url, timeout=15)
+        if r.status_code == 200:
+            print(f"  📱 WhatsApp alert successfully sent to {clean_phone}!")
+            return True
+        else:
+            print(f"  ⚠️ CallMeBot returned status {r.status_code}: {r.text[:100]}")
+            return False
+    except Exception as e:
+        print(f"  ❌ WhatsApp alert failed: {e}")
+        return False
+
+
 # ==============================================================================
 # 5. INSTAGRAM REELS UPLOADER (OPTIONAL / LEGACY)
 # ==============================================================================
@@ -1072,6 +1116,32 @@ def process_sheet():
         elif status == "SCHEDULED" and not ig_is_live:
             should_process = True
             print(f"  📦 Row #{i} ('{title[:25]}...'): Generating missing merged video download link...")
+        elif status == "SCHEDULED":
+            if target_utc and now_utc >= target_utc:
+                print(f"  ⏰ Scheduled time reached for Row #{i} ('{title[:25]}...') at {scheduled_str}!")
+                caption_val = get_field(row_dict, "ig_caption", "caption")
+                hashtags_val = get_field(row_dict, "ig_hashtags", "hashtags")
+                wa_sent = send_whatsapp_alert(
+                    phone=WHATSAPP_PHONE,
+                    apikey=WHATSAPP_APIKEY,
+                    title=title,
+                    drive_url=existing_ig_id,
+                    caption=caption_val,
+                    hashtags=hashtags_val,
+                    scheduled_time_str=scheduled_str
+                )
+                new_status = "PUBLISHED"
+                log_note = f"Published at {scheduled_str} (YT & FB live)"
+                if wa_sent:
+                    log_note += " | WhatsApp alert sent"
+                sheet.update_cell(i, c_status, new_status)
+                sheet.update_cell(i, c_log, log_note)
+                print(f"  🎉 Row #{i} status updated to {new_status}: {log_note}")
+                continue
+            else:
+                mins_left = int((target_utc - now_utc).total_seconds() / 60) if target_utc else 0
+                print(f"  ⏳ Row #{i} ('{title[:25]}...'): Status='SCHEDULED' ({mins_left} mins until {scheduled_str}). Waiting for scheduled time.")
+                continue
         else:
             print(f"  📋 Row #{i} ('{title[:25]}...'): Status='{status}'. Skipping.")
             continue

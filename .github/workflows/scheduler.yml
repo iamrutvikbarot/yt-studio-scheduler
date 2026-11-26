@@ -56,5 +56,7 @@ jobs:
           FB_PAGE_ACCESS_TOKEN: ${{ secrets.FB_PAGE_ACCESS_TOKEN }}
           TARGET_DRIVE_FOLDER_ID: ${{ vars.TARGET_DRIVE_FOLDER_ID || '1pvRu3Wcf0T58_UxqBGfxWUL7-lxeTMuj' }}
           TIMEZONE_OFFSET_HOURS: ${{ vars.TIMEZONE_OFFSET_HOURS || '5.5' }}
+          WHATSAPP_PHONE: ${{ secrets.WHATSAPP_PHONE }}
+          WHATSAPP_APIKEY: ${{ secrets.WHATSAPP_APIKEY }}
         run: |
           python process_and_upload.py
