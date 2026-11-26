@@ -50,6 +50,9 @@ DEFAULT_MUSIC_FOLDER_URL = os.getenv(
 # Avoid reusing any song already used within this many days (48 hours by default)
 MUSIC_COOLDOWN_DAYS = float(os.getenv("MUSIC_COOLDOWN_DAYS", "2"))
 
+# Target Google Drive folder for saving ready merged videos (for manual Instagram posting)
+TARGET_DRIVE_FOLDER_ID = os.getenv("TARGET_DRIVE_FOLDER_ID", "1pvRu3Wcf0T58_UxqBGfxWUL7-lxeTMuj")
+
 
 # ==============================================================================
 # 1. FILE DOWNLOAD HELPER (BULLETPROOF GOOGLE DRIVE & DIRECT LINKS)
@@ -553,14 +556,14 @@ def upload_to_youtube(video_path, title, description, tags, target_utc_dt=None):
 # ==============================================================================
 def upload_merged_video(file_path, row_id, title):
     """
-    Uploads the merged video (video + song) to GitHub Releases (primary)
-    or Google Drive / tmpfiles (fallback) and returns a direct permanent download link.
+    Uploads the merged video (video + song) to the target Google Drive folder (primary)
+    or GitHub Releases / tmpfiles (fallback) and returns a direct permanent link.
     """
     clean_id = re.sub(r'[^a-zA-Z0-9_-]', '', str(row_id).strip()) or "reel"
     clean_title = re.sub(r'[^a-zA-Z0-9_-]', '_', str(title).strip())[:25].strip('_')
     filename = f"merged_{clean_id}_{clean_title}.mp4"
 
-    # Prepare local copy with exact target filename for gh release upload
+    # Prepare local copy with exact target filename
     upload_target = file_path
     if os.path.basename(file_path) != filename:
         temp_named_path = os.path.join(os.path.dirname(file_path), filename)
@@ -571,7 +574,85 @@ def upload_merged_video(file_path, row_id, title):
             print(f"  ⚠️ Could not copy to target filename {filename}: {e_copy}")
             upload_target = file_path
 
-    # 1. Try GitHub Release upload (Fast direct CDN download link for mobile)
+    # 1. Primary: Upload to Google Drive folder using User OAuth (User quota)
+    try:
+        if YT_REFRESH_TOKEN and YT_CLIENT_ID and YT_CLIENT_SECRET:
+            user_creds = Credentials(
+                None,
+                refresh_token=YT_REFRESH_TOKEN,
+                token_uri="https://oauth2.googleapis.com/token",
+                client_id=YT_CLIENT_ID,
+                client_secret=YT_CLIENT_SECRET,
+                scopes=[
+                    "https://www.googleapis.com/auth/youtube.upload",
+                    "https://www.googleapis.com/auth/drive"
+                ]
+            )
+            drive_service = build("drive", "v3", credentials=user_creds)
+            file_metadata = {
+                "name": filename,
+                "mimeType": "video/mp4",
+                "parents": [TARGET_DRIVE_FOLDER_ID]
+            }
+            media = MediaFileUpload(upload_target, mimetype="video/mp4", resumable=True)
+            f_obj = drive_service.files().create(
+                body=file_metadata,
+                media_body=media,
+                fields="id, webViewLink",
+                supportsAllDrives=True
+            ).execute()
+            f_id = f_obj.get("id")
+            try:
+                drive_service.permissions().create(
+                    fileId=f_id,
+                    body={"type": "anyone", "role": "reader"},
+                    supportsAllDrives=True
+                ).execute()
+            except Exception:
+                pass
+            drive_url = f_obj.get("webViewLink") or f"https://drive.google.com/file/d/{f_id}/view?usp=sharing"
+            print(f"  ✅ Uploaded merged video to Google Drive folder '{TARGET_DRIVE_FOLDER_ID}': {drive_url}")
+            return drive_url
+    except Exception as e_user_drive:
+        print(f"  ⚠️ User OAuth Google Drive upload attempt: {e_user_drive}")
+
+    # 2. Try Google Drive upload via Service Account (Shared Drive or with quota)
+    try:
+        if SERVICE_ACCOUNT_JSON:
+            sa_info = json.loads(SERVICE_ACCOUNT_JSON)
+            creds = service_account.Credentials.from_service_account_info(
+                sa_info,
+                scopes=["https://www.googleapis.com/auth/drive"]
+            )
+            drive_service = build("drive", "v3", credentials=creds)
+            file_metadata = {
+                "name": filename,
+                "mimeType": "video/mp4",
+                "parents": [TARGET_DRIVE_FOLDER_ID]
+            }
+            media = MediaFileUpload(upload_target, mimetype="video/mp4", resumable=True)
+            f_obj = drive_service.files().create(
+                body=file_metadata,
+                media_body=media,
+                fields="id, webViewLink",
+                supportsAllDrives=True
+            ).execute()
+            f_id = f_obj.get("id")
+            try:
+                drive_service.permissions().create(
+                    fileId=f_id,
+                    body={"type": "anyone", "role": "reader"},
+                    supportsAllDrives=True
+                ).execute()
+            except Exception:
+                pass
+            drive_url = f_obj.get("webViewLink") or f"https://drive.google.com/file/d/{f_id}/view?usp=sharing"
+            print(f"  ✅ Uploaded merged video to Google Drive via Service Account: {drive_url}")
+            return drive_url
+    except Exception as eg:
+        print(f"  ⚠️ Service Account Google Drive upload failed: {eg}")
+
+    # 3. Fallback: GitHub Releases (free permanent cloud storage)
     try:
         subprocess.run(
             ["gh", "release", "view", "merged-videos"],
@@ -586,37 +667,14 @@ def upload_merged_video(file_path, row_id, title):
         if res.returncode == 0:
             actual_name = os.path.basename(upload_target)
             gh_url = f"https://github.com/iamrutvikbarot/yt-studio-scheduler/releases/download/merged-videos/{actual_name}"
-            print(f"  ✅ Uploaded merged video to GitHub Releases: {gh_url}")
+            print(f"  ✅ Fallback: Uploaded merged video to GitHub Releases: {gh_url}")
             return gh_url
         else:
             print(f"  ⚠️ gh release upload returned {res.returncode}: {res.stderr}")
     except Exception as e:
         print(f"  ⚠️ GitHub release upload failed: {e}")
 
-    # 2. Try Google Drive upload via Service Account
-    try:
-        if SERVICE_ACCOUNT_JSON:
-            sa_info = json.loads(SERVICE_ACCOUNT_JSON)
-            creds = service_account.Credentials.from_service_account_info(
-                sa_info,
-                scopes=["https://www.googleapis.com/auth/drive"]
-            )
-            drive_service = build("drive", "v3", credentials=creds)
-            file_metadata = {"name": filename, "mimeType": "video/mp4"}
-            media = MediaFileUpload(upload_target, mimetype="video/mp4", resumable=True)
-            f_obj = drive_service.files().create(body=file_metadata, media_body=media, fields="id, webViewLink").execute()
-            f_id = f_obj.get("id")
-            try:
-                drive_service.permissions().create(fileId=f_id, body={"type": "anyone", "role": "reader"}).execute()
-            except Exception:
-                pass
-            drive_url = f_obj.get("webViewLink") or f"https://drive.google.com/file/d/{f_id}/view?usp=sharing"
-            print(f"  ✅ Uploaded merged video to Google Drive: {drive_url}")
-            return drive_url
-    except Exception as eg:
-        print(f"  ⚠️ Google Drive upload failed: {eg}")
-
-    # 3. Fallback: tmpfiles.org
+    # 4. Fallback: tmpfiles.org
     try:
         with open(upload_target, "rb") as f_in:
             r = requests.post("https://tmpfiles.org/api/v1/upload", files={"file": f_in}, timeout=120)
