@@ -548,7 +548,80 @@ def upload_to_youtube(video_path, title, description, tags, target_utc_dt=None):
 
 
 # ==============================================================================
-# 4. INSTAGRAM REELS UPLOADER & SCHEDULER
+# 4. MERGED VIDEO DOWNLOAD LINK (FOR INSTAGRAM MANUAL POSTING)
+# ==============================================================================
+def upload_merged_video(file_path, row_id, title):
+    """
+    Uploads the merged video (video + song) to GitHub Releases (primary)
+    or Google Drive / tmpfiles (fallback) and returns a direct permanent download link.
+    """
+    clean_id = re.sub(r'[^a-zA-Z0-9_-]', '', str(row_id).strip()) or "reel"
+    clean_title = re.sub(r'[^a-zA-Z0-9_-]', '_', str(title).strip())[:25].strip('_')
+    filename = f"merged_{clean_id}_{clean_title}.mp4"
+
+    # 1. Try GitHub Release upload (Fast direct CDN download link for mobile)
+    try:
+        subprocess.run(
+            ["gh", "release", "view", "merged-videos"],
+            capture_output=True,
+            text=True
+        )
+        res = subprocess.run(
+            ["gh", "release", "upload", "merged-videos", f"{file_path}#{filename}", "--clobber"],
+            capture_output=True,
+            text=True
+        )
+        if res.returncode == 0:
+            gh_url = f"https://github.com/iamrutvikbarot/yt-studio-scheduler/releases/download/merged-videos/{filename}"
+            print(f"  ✅ Uploaded merged video to GitHub Releases: {gh_url}")
+            return gh_url
+        else:
+            print(f"  ⚠️ gh release upload returned {res.returncode}: {res.stderr}")
+    except Exception as e:
+        print(f"  ⚠️ GitHub release upload failed: {e}")
+
+    # 2. Try Google Drive upload via Service Account
+    try:
+        if SERVICE_ACCOUNT_JSON:
+            sa_info = json.loads(SERVICE_ACCOUNT_JSON)
+            creds = service_account.Credentials.from_service_account_info(
+                sa_info,
+                scopes=["https://www.googleapis.com/auth/drive"]
+            )
+            drive_service = build("drive", "v3", credentials=creds)
+            file_metadata = {"name": filename, "mimeType": "video/mp4"}
+            media = MediaFileUpload(file_path, mimetype="video/mp4", resumable=True)
+            f_obj = drive_service.files().create(body=file_metadata, media_body=media, fields="id, webViewLink").execute()
+            f_id = f_obj.get("id")
+            try:
+                drive_service.permissions().create(fileId=f_id, body={"type": "anyone", "role": "reader"}).execute()
+            except Exception:
+                pass
+            drive_url = f_obj.get("webViewLink") or f"https://drive.google.com/file/d/{f_id}/view?usp=sharing"
+            print(f"  ✅ Uploaded merged video to Google Drive: {drive_url}")
+            return drive_url
+    except Exception as eg:
+        print(f"  ⚠️ Google Drive upload failed: {eg}")
+
+    # 3. Fallback: tmpfiles.org
+    try:
+        with open(file_path, "rb") as f_in:
+            r = requests.post("https://tmpfiles.org/api/v1/upload", files={"file": f_in}, timeout=120)
+            if r.status_code == 200:
+                data = r.json()
+                t_url = data.get("data", {}).get("url")
+                if t_url:
+                    dl_url = t_url.replace("tmpfiles.org/", "tmpfiles.org/dl/")
+                    print(f"  ✅ Uploaded merged video to tmpfiles: {dl_url}")
+                    return dl_url
+    except Exception as et:
+        print(f"  ⚠️ tmpfiles upload failed: {et}")
+
+    return None
+
+
+# ==============================================================================
+# 5. INSTAGRAM REELS UPLOADER (OPTIONAL / LEGACY)
 # ==============================================================================
 def upload_to_instagram(video_path, caption, hashtags, target_utc_dt=None):
     if not IG_USER_ID or not IG_ACCESS_TOKEN:
@@ -915,14 +988,8 @@ def process_sheet():
         if status in ["PENDING", "RETRY"]:
             should_process = True
         elif status == "SCHEDULED" and not ig_is_live:
-            if not target_utc or now_utc >= target_utc:
-                should_process = True
-                is_scheduled_trigger = True
-                print(f"  ⏰ Scheduled time arrived for Row #{i} ('{title[:25]}...')! Publishing pending Instagram Reel...")
-            else:
-                mins_left = int((target_utc - now_utc).total_seconds() / 60)
-                print(f"  ⏳ Row #{i} ('{title[:25]}...'): Status='SCHEDULED' ({mins_left} mins until {scheduled_str}). Waiting for scheduled time.")
-                continue
+            should_process = True
+            print(f"  📦 Row #{i} ('{title[:25]}...'): Generating missing merged video download link...")
         else:
             print(f"  📋 Row #{i} ('{title[:25]}...'): Status='{status}'. Skipping.")
             continue
@@ -1036,44 +1103,30 @@ def process_sheet():
                 else:
                     print(f"  ℹ️ Facebook Page Reel already uploaded: {existing_fb_id}. Skipping FB upload.")
 
-                # 5. Upload to Instagram Reels
+                # 5. Merged Video Download Link (For Instagram Manual Posting)
+                row_id_val = get_field(row_dict, "id", default=f"row_{i}")
                 ig_link = existing_ig_id
-                ig_error = None
-                is_future = bool(target_utc and (target_utc - now_utc).total_seconds() > 600)
-
                 if not ig_link or not ig_link.startswith("http"):
-                    if is_future:
-                        ig_link = f"⏳ Scheduled for {scheduled_str}"
-                        print(f"  ⏳ Instagram Reel queued. Will automatically publish at {scheduled_str}.")
-                    else:
-                        try:
-                            ig_link = upload_to_instagram(
-                                video_path=final_video_path,
-                                caption=get_field(row_dict, "ig_caption", "caption"),
-                                hashtags=get_field(row_dict, "ig_hashtags", "hashtags")
-                            )
-                        except Exception as ex_ig:
-                            ig_error = str(ex_ig)
-                            print(f"❌ Instagram Upload Failed: {ex_ig}")
+                    print(f"📦 Generating merged video (video + song) download link for Instagram...")
+                    ig_link = upload_merged_video(final_video_path, row_id_val, title)
+                    if not ig_link:
+                        print(f"⚠️ Failed to upload merged video to external storage.")
+                        ig_link = "Error generating download link"
                 else:
-                    print(f"  ℹ️ Instagram Reel already live: {existing_ig_id}. Skipping IG upload.")
+                    print(f"  ℹ️ Merged video download link already present: {existing_ig_id}. Skipping re-upload.")
 
                 # 6. Update Sheet
+                is_future = bool(target_utc and (target_utc - now_utc).total_seconds() > 600)
                 fb_status_note = "FB" if (fb_link and str(fb_link).startswith("http")) else ("FB FAILED" if fb_error else "FB skipped")
-                ig_is_published = bool(ig_link and str(ig_link).startswith("http"))
+
                 if is_future:
                     new_status = "SCHEDULED"
-                    log_text = f"YT & {fb_status_note} | IG queued for {scheduled_str} (at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')})"
-                elif ig_error or not ig_is_published:
-                    new_status = "FAILED"
-                    log_text = f"YT & {fb_status_note} | IG FAILED at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                    log_text = f"YT & {fb_status_note} scheduled | Merged Reel ready for Instagram (at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')})"
                 else:
                     new_status = "PUBLISHED"
-                    log_text = f"YT & {fb_status_note} & IG processed at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                    log_text = f"YT & {fb_status_note} processed | Merged Reel ready for Instagram at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
                 if fb_error:
                     log_text += f" | FB Err: {fb_error[:100]}"
-                if ig_error:
-                    log_text += f" | IG Err: {ig_error[:120]}"
 
                 if was_random_from_folder and picked_song_name:
                     log_text += f" | Music: {picked_song_name}"
