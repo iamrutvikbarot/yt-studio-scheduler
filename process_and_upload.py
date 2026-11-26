@@ -5,6 +5,7 @@ import json
 import time
 import random
 import html
+import shutil
 import subprocess
 import tempfile
 import datetime
@@ -559,6 +560,17 @@ def upload_merged_video(file_path, row_id, title):
     clean_title = re.sub(r'[^a-zA-Z0-9_-]', '_', str(title).strip())[:25].strip('_')
     filename = f"merged_{clean_id}_{clean_title}.mp4"
 
+    # Prepare local copy with exact target filename for gh release upload
+    upload_target = file_path
+    if os.path.basename(file_path) != filename:
+        temp_named_path = os.path.join(os.path.dirname(file_path), filename)
+        try:
+            shutil.copy2(file_path, temp_named_path)
+            upload_target = temp_named_path
+        except Exception as e_copy:
+            print(f"  ⚠️ Could not copy to target filename {filename}: {e_copy}")
+            upload_target = file_path
+
     # 1. Try GitHub Release upload (Fast direct CDN download link for mobile)
     try:
         subprocess.run(
@@ -567,12 +579,13 @@ def upload_merged_video(file_path, row_id, title):
             text=True
         )
         res = subprocess.run(
-            ["gh", "release", "upload", "merged-videos", f"{file_path}#{filename}", "--clobber"],
+            ["gh", "release", "upload", "merged-videos", upload_target, "--clobber"],
             capture_output=True,
             text=True
         )
         if res.returncode == 0:
-            gh_url = f"https://github.com/iamrutvikbarot/yt-studio-scheduler/releases/download/merged-videos/{filename}"
+            actual_name = os.path.basename(upload_target)
+            gh_url = f"https://github.com/iamrutvikbarot/yt-studio-scheduler/releases/download/merged-videos/{actual_name}"
             print(f"  ✅ Uploaded merged video to GitHub Releases: {gh_url}")
             return gh_url
         else:
@@ -590,7 +603,7 @@ def upload_merged_video(file_path, row_id, title):
             )
             drive_service = build("drive", "v3", credentials=creds)
             file_metadata = {"name": filename, "mimeType": "video/mp4"}
-            media = MediaFileUpload(file_path, mimetype="video/mp4", resumable=True)
+            media = MediaFileUpload(upload_target, mimetype="video/mp4", resumable=True)
             f_obj = drive_service.files().create(body=file_metadata, media_body=media, fields="id, webViewLink").execute()
             f_id = f_obj.get("id")
             try:
@@ -605,7 +618,7 @@ def upload_merged_video(file_path, row_id, title):
 
     # 3. Fallback: tmpfiles.org
     try:
-        with open(file_path, "rb") as f_in:
+        with open(upload_target, "rb") as f_in:
             r = requests.post("https://tmpfiles.org/api/v1/upload", files={"file": f_in}, timeout=120)
             if r.status_code == 200:
                 data = r.json()
@@ -618,6 +631,17 @@ def upload_merged_video(file_path, row_id, title):
         print(f"  ⚠️ tmpfiles upload failed: {et}")
 
     return None
+
+
+def is_link_live(url):
+    """Checks whether a URL is valid and accessible (status 200 or 302)."""
+    if not url or not str(url).startswith("http"):
+        return False
+    try:
+        r = requests.head(str(url).strip(), allow_redirects=True, timeout=5)
+        return r.status_code in [200, 302]
+    except Exception:
+        return True
 
 
 # ==============================================================================
@@ -979,7 +1003,7 @@ def process_sheet():
         existing_yt_link = get_field(row_dict, "yt_link", "yt link", "youtube link")
         existing_fb_id = get_field(row_dict, "fb_id", "fb id", "facebook id")
         existing_ig_id = get_field(row_dict, "ig_id", "ig id", "instagram id")
-        ig_is_live = existing_ig_id.startswith("http")
+        ig_is_live = is_link_live(existing_ig_id)
 
         # Determine if we should process this row
         should_process = False
@@ -1105,15 +1129,15 @@ def process_sheet():
 
                 # 5. Merged Video Download Link (For Instagram Manual Posting)
                 row_id_val = get_field(row_dict, "id", default=f"row_{i}")
-                ig_link = existing_ig_id
-                if not ig_link or not ig_link.startswith("http"):
+                ig_link = existing_ig_id if is_link_live(existing_ig_id) else None
+                if not ig_link:
                     print(f"📦 Generating merged video (video + song) download link for Instagram...")
                     ig_link = upload_merged_video(final_video_path, row_id_val, title)
                     if not ig_link:
                         print(f"⚠️ Failed to upload merged video to external storage.")
                         ig_link = "Error generating download link"
                 else:
-                    print(f"  ℹ️ Merged video download link already present: {existing_ig_id}. Skipping re-upload.")
+                    print(f"  ℹ️ Merged video download link already verified and accessible: {existing_ig_id}. Skipping re-upload.")
 
                 # 6. Update Sheet
                 is_future = bool(target_utc and (target_utc - now_utc).total_seconds() > 600)
